@@ -1,0 +1,204 @@
+import tf_mnist_loader
+import tensorflow as tf
+import numpy as np
+import matplotlib.pyplot as plt
+import cv2
+
+class MNIST():
+
+    def __init__(self):
+
+        self.mnist_size = 28
+        self.batch_size =5
+        self.channels = 1 # grayscale
+        self.minRadius = 4 # zooms -> minRadius * 2**<depth_level>
+        self.sensorBandwidth = 8 # fixed resolution of sensor
+        self.sensorArea = self.sensorBandwidth**2
+        self.depth = 8 # zooms
+        self.dataset = tf_mnist_loader.read_data_sets("mnist_data")
+
+
+    def get_batch(self, batch_size):
+        X, Y = self.dataset.test.next_batch(batch_size)
+        return X,Y
+
+    def glimpseSensor(self, img, normLoc):
+        loc = ((normLoc + 1) / 2) * self.mnist_size # normLoc coordinates are between -1 and 1
+        loc = loc.astype(np.int32)
+
+        img = np.reshape(img, (self.batch_size, self.mnist_size, self.mnist_size, self.channels))
+
+        zooms = []
+
+        # process each image individually
+        for k in xrange(self.batch_size):
+            imgZooms = []
+            one_img = img[k,:,:,:]
+            max_radius = self.minRadius * (2 ** (self.depth - 1))
+            offset = max_radius
+
+            # pad image with zeros
+            one_img = self.pad_to_bounding_box(one_img, offset, offset, \
+                max_radius * 2 + self.mnist_size, max_radius * 2 + self.mnist_size)
+
+            for i in xrange(self.depth):
+                r = int(self.minRadius * (2 ** (i - 1)))
+
+                d_raw = 2 * r
+                d = np.reshape(np.asarray(d_raw), [1])
+
+                d = np.tile(d, [2])
+
+                loc_k = loc[k,:]
+                adjusted_loc = offset + loc_k - r
+
+
+                one_img2 = np.reshape(one_img, (one_img.shape[0],\
+                    one_img.shape[1]))
+
+                # crop image to (d x d)
+                #zoom = slice(one_img2, adjusted_loc, d)
+                zoom = one_img2[adjusted_loc[0]:adjusted_loc[0]+d[0], adjusted_loc[1]:adjusted_loc[1]+d[1]]
+                #print zoom.shape
+                #zoom = np.reshape(zoom, (1, d_raw, d_raw, 1))
+
+                # resize cropped image to (sensorBandwidth x sensorBandwidth)
+                zoom = cv2.resize(zoom, (self.sensorBandwidth, self.sensorBandwidth),
+                      interpolation=cv2.INTER_LINEAR)
+                zoom = np.reshape(zoom, (self.sensorBandwidth, self.sensorBandwidth))
+                imgZooms.append(zoom)
+
+            zooms.append(np.stack(imgZooms))
+
+        zooms = np.stack(zooms)
+
+        return zooms
+
+    def pad_to_bounding_box(self, image, offset_height, offset_width, target_height,
+                            target_width):
+        """Pad `image` with zeros to the specified `height` and `width`.
+        Adds `offset_height` rows of zeros on top, `offset_width` columns of
+        zeros on the left, and then pads the image on the bottom and right
+        with zeros until it has dimensions `target_height`, `target_width`.
+        This op does nothing if `offset_*` is zero and the image already has size
+        `target_height` by `target_width`.
+        Args:
+          image: 4-D Tensor of shape `[batch, height, width, channels]` or
+                 3-D Tensor of shape `[height, width, channels]`.
+          offset_height: Number of rows of zeros to add on top.
+          offset_width: Number of columns of zeros to add on the left.
+          target_height: Height of output image.
+          target_width: Width of output image.
+        Returns:
+          If `image` was 4-D, a 4-D float Tensor of shape
+          `[batch, target_height, target_width, channels]`
+          If `image` was 3-D, a 3-D float Tensor of shape
+          `[target_height, target_width, channels]`
+        Raises:
+          ValueError: If the shape of `image` is incompatible with the `offset_*` or
+            `target_*` arguments, or either `offset_height` or `offset_width` is
+            negative.
+        """
+
+        is_batch = True
+        image_shape = image.shape
+        if image.ndim == 3:
+            is_batch = False
+            image = np.expand_dims(image, 0)
+        elif image.ndim is None:
+            is_batch = False
+            image = np.expand_dims(image, 0)
+            image.set_shape([None] * 4)
+        elif image_shape.ndims != 4:
+            raise ValueError('\'image\' must have either 3 or 4 dimensions.')
+
+        batch = len(image)
+        height = len(image[0])
+        width = len(image[0,0])
+        depth = len(image[0,0,0])
+
+        after_padding_width = target_width - offset_width - width
+        after_padding_height = target_height - offset_height - height
+
+        assert offset_height >= 0, 'offset_height must be >= 0'
+        assert offset_width >= 0, 'offset_width must be >= 0'
+        assert after_padding_width >= 0, 'width must be <= target - offset'
+        assert after_padding_height >= 0, 'height must be <= target - offset'
+
+        # Do not pad on the depth dimensions.
+        paddings = np.reshape(
+               np.stack([
+                0, 0, offset_height, after_padding_height, offset_width,
+                after_padding_width, 0, 0
+            ]), [4, 2])
+        padded = np.pad(image, paddings, 'constant', constant_values=0)
+
+        padded_shape = [i for i in [batch, target_height, target_width, depth]]
+        np.reshape(padded, padded_shape)
+
+        if not is_batch:
+            padded = np.squeeze(padded, axis=0)
+
+        return padded
+
+    def dense_to_one_hot(self, labels_dense, num_classes=10):
+        """Convert class labels from scalars to one-hot vectors."""
+        # copied from TensorFlow tutorial
+        num_labels = labels_dense.shape[0]
+        index_offset = np.arange(num_labels) * n_classes
+        labels_one_hot = np.zeros((num_labels, num_classes))
+        labels_one_hot.flat[index_offset + labels_dense.ravel()] = 1
+        return labels_one_hot
+
+    # to use for maximum likelihood with glimpse location
+    def gaussian_pdf(self, mean, sample):
+        Z = 1.0 / (loc_sd * tf.sqrt(2.0 * math.pi))
+        a = -tf.square(sample - mean) / (2.0 * tf.square(loc_sd))
+        return Z * tf.exp(a)
+
+def main():
+    mnist = MNIST()
+    mnist_size = mnist.mnist_size
+    batch_size = mnist.batch_size
+    channels = 1 # grayscale
+
+    minRadius = 4 # zooms -> minRadius * 2**<depth_level>
+    sensorBandwidth = 8 # fixed resolution of sensor
+    sensorArea = sensorBandwidth**2
+    depth = 1 # zooms
+    X, Y= mnist.get_batch(batch_size)
+    #mnist.glimpseSensor(X, )
+
+
+    img = np.reshape(X, (batch_size, mnist_size, mnist_size, channels))
+    fig = plt.figure()
+    plt.ion()
+    plt.show()
+
+    initial_loc = np.random.uniform(-1, 1,(batch_size, 2))
+
+    zooms = mnist.glimpseSensor(X, initial_loc)
+
+    for k in xrange(batch_size):
+        one_img = img[k,:,:,:]
+        max_radius = minRadius * (2 ** (depth - 1))
+        offset = max_radius
+        one_img = mnist.pad_to_bounding_box(one_img, offset, offset,
+                                            max_radius * 2 + mnist_size, max_radius * 2 + mnist_size)
+        plt.imshow(one_img[:,:,0], cmap=plt.get_cmap('gray'),
+                   interpolation="nearest")
+
+        plt.draw()
+        #time.sleep(0.05)
+        plt.pause(1.0001)
+
+        for z in zooms[k]:
+            plt.imshow(z[:,:], cmap=plt.get_cmap('gray'),
+                   interpolation="nearest")
+
+            plt.draw()
+            #time.sleep(0.05)
+            plt.pause(1.0001)
+
+if __name__ == '__main__':
+    main()
