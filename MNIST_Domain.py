@@ -1,5 +1,4 @@
 import tf_mnist_loader
-import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
@@ -16,6 +15,8 @@ class MNIST():
         self.sensorArea = self.sensorBandwidth**2
         self.depth = 8 # zooms
         self.dataset = tf_mnist_loader.read_data_sets("mnist_data")
+
+        self.loc_sd = 0.11               # std when setting the location
 
 
     def get_batch(self, batch_size):
@@ -141,19 +142,11 @@ class MNIST():
 
         return padded
 
-    def dense_to_one_hot(self, labels_dense, num_classes=10):
-        """Convert class labels from scalars to one-hot vectors."""
-        # copied from TensorFlow tutorial
-        num_labels = labels_dense.shape[0]
-        index_offset = np.arange(num_labels) * n_classes
-        labels_one_hot = np.zeros((num_labels, num_classes))
-        labels_one_hot.flat[index_offset + labels_dense.ravel()] = 1
-        return labels_one_hot
 
     # to use for maximum likelihood with glimpse location
     def gaussian_pdf(self, mean, sample):
-        Z = 1.0 / (loc_sd * tf.sqrt(2.0 * math.pi))
-        a = -tf.square(sample - mean) / (2.0 * tf.square(loc_sd))
+        Z = 1.0 / (self.loc_sd * np.sqrt(2.0 * np.math.pi))
+        a = -tf.square(sample - mean) / (2.0 * np.square(self.loc_sd))
         return Z * tf.exp(a)
 
 def main():
@@ -185,6 +178,8 @@ def main():
         offset = max_radius
         one_img = mnist.pad_to_bounding_box(one_img, offset, offset,
                                             max_radius * 2 + mnist_size, max_radius * 2 + mnist_size)
+
+        plt.title(Y[k], fontsize=40)
         plt.imshow(one_img[:,:,0], cmap=plt.get_cmap('gray'),
                    interpolation="nearest")
 
