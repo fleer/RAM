@@ -5,15 +5,15 @@ import cv2
 
 class MNIST():
 
-    def __init__(self):
+    def __init__(self, mnist_size, batch_size, channels, minRadius, sensorBandwidth,depth):
 
-        self.mnist_size = 28
-        self.batch_size =5
-        self.channels = 1 # grayscale
-        self.minRadius = 4 # zooms -> minRadius * 2**<depth_level>
-        self.sensorBandwidth = 8 # fixed resolution of sensor
+        self.mnist_size = mnist_size
+        self.batch_size = batch_size
+        self.channels = channels # grayscale
+        self.minRadius = minRadius # zooms -> minRadius * 2**<depth_level>
+        self.sensorBandwidth = sensorBandwidth # fixed resolution of sensor
         self.sensorArea = self.sensorBandwidth**2
-        self.depth = 8 # zooms
+        self.depth = depth # zooms
         self.dataset = tf_mnist_loader.read_data_sets("mnist_data")
 
         self.loc_sd = 0.11               # std when setting the location
