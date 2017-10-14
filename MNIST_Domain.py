@@ -24,6 +24,7 @@ class MNIST():
         return X,Y
 
     def glimpseSensor(self, img, normLoc):
+        assert np.any(np.abs(normLoc)<=1)," Locations have to be between 1, -1: {}".format(normLoc)
         loc = ((normLoc + 1) / 2) * self.mnist_size # normLoc coordinates are between -1 and 1
         loc = loc.astype(np.int32)
 
@@ -60,8 +61,9 @@ class MNIST():
                 # crop image to (d x d)
                 #zoom = slice(one_img2, adjusted_loc, d)
                 zoom = one_img2[adjusted_loc[0]:adjusted_loc[0]+d[0], adjusted_loc[1]:adjusted_loc[1]+d[1]]
-                #print zoom.shape
-                #zoom = np.reshape(zoom, (1, d_raw, d_raw, 1))
+                assert not np.any(np.equal(zoom.shape, (0,0))), "Picture has size 0, location {}, depth {}".format(adjusted_loc, d)
+               # zoom = np.reshape(zoom, (1, d_raw, d_raw, 1))
+
 
                 # resize cropped image to (sensorBandwidth x sensorBandwidth)
                 zoom = cv2.resize(zoom, (self.sensorBandwidth, self.sensorBandwidth),

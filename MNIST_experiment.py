@@ -5,11 +5,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 mnist_size = 28
-batch_size = 1
+batch_size = 10
 channels = 1 # grayscale
 minRadius = 4 # zooms -> minRadius * 2**<depth_level>
 sensorBandwidth = 8 # fixed resolution of sensor
-depth = 8 # zooms
+depth = 3 # zooms
 totalSensorBandwidth = depth * sensorBandwidth * sensorBandwidth * channels
 
 nGlimps = 6
@@ -19,7 +19,7 @@ ram = RAM(totalSensorBandwidth, batch_size)
 loc_sd = 0.11               # std when setting the location
 
 epoch = 0
-for i in range(50000):
+for i in range(500000):
     X, Y= mnist.get_batch(batch_size)
     initial_loc = np.random.uniform(-1, 1,(batch_size, 2))
     mean_locs = []
@@ -46,7 +46,7 @@ for i in range(50000):
     #        R[j].append(r[j])
     ram.train(zooms, loc, Y)
     epoch += 1
-    if 5000 % epoch == 0:
+    if 100 % epoch == 0:
         actions = []
         for j in range(100):
             X, Y= mnist.get_batch(batch_size)
@@ -65,7 +65,7 @@ for i in range(50000):
                 mean_locs.append(loc)
             action = np.argmax(a_prob, axis=-1)
             actions.append(np.equal(action,Y).astype(np.float32))
-            ram.ram.reset_states()
+#            ram.ram.reset_states()
 
         print np.mean(actions)
 
