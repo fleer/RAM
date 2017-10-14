@@ -21,27 +21,9 @@ class RAM():
     def REINFORCE_loss(self, action_p):
         def rloss(y_true, y_pred):
             log_l = K.log(action_p) * y_true
-            return K.sum(y_pred - y_pred, axis=-1) + K.mean(- log_l)
+            return K.sum(y_pred - y_pred, axis=-1) + K.mean(- log_l, axis=-1)
         return rloss
 
-#    def REINFORCE_loss(self, y_true, y_pred):
-#       #     action = np.argmax(action_p, axis=-1)
-#       #     if np.equal(action, y_true):
-#        #assert y_pred.shape[-1] == 10, "Predicted Value should be class probability {}".format(y_pred.shape)
-#        max_p_y = np.argmax(y_pred[0], axis=-1)
-#
-#        #R = np.cast(np.equal(max_p_y, y_true[0]), tf.float32) # reward per example
-#
-#        #reward = np.reduce_mean(R) # overall reward
-#        action_p = y_pred[0] * y_true[0]
-#        log_action_prob = K.log(y_pred[0]) * y_true[0]
-#        loss = - log_action_prob #* self.discounted_r
-#        return K.sum(y_pred[1], axis=-1)
-    def penalized_loss(self,noise):
-        def loss(y_true, y_pred):
-            return K.mean(K.square(y_pred - y_true) - K.square(y_true - noise), axis=-1)
-
-        return loss
 
     def big_net(self):
         glimpse_model_i = keras.layers.Input(batch_shape=(self.batch_size, self.totalSensorBandwidth),
@@ -84,19 +66,26 @@ class RAM():
 
                                  )(model)
 
-        bmodel = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out])
+        self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out])
+        #self.ram.compile(optimizer=keras.optimizers.SGD(lr=0.01, momentum=0.0, decay=0.0, nesterov=False),
+        #                 loss={'action_output': 'categorical_crossentropy',
+        #                       'location_output': self.REINFORCE_loss(action_p=action_out)})
+        self.ram.compile(optimizer=keras.optimizers.SGD(lr=0.01, momentum=0.9, decay=0.0, nesterov=False),
+                         loss={'action_output': 'categorical_crossentropy', 'location_output': self.dummy_loss})
+
+        self.ram_loc = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out])
+        self.ram_loc.compile(optimizer=keras.optimizers.SGD(lr=0.01, momentum=0.9, decay=0.0, nesterov=False),
+                         loss={'action_output': self.dummy_loss, 'location_output': self.REINFORCE_loss(action_p=action_out)})
+
+        self.ram_loc.set_weights(self.ram.get_weights())
 
 
-        #bmodel.compile(optimizer=keras.optimizers.SGD(lr=0.01, momentum=0.0, decay=0.0, nesterov=False),
-        #               loss=[self.cat_ent, self.REINFORCE_loss], loss_weights=[[1.,0.],[0.,0.]])
-        bmodel.compile(optimizer=keras.optimizers.SGD(lr=0.01, momentum=0.0, decay=0.0, nesterov=False),
-                       loss={'action_output': 'categorical_crossentropy',
-                             'location_output': self.REINFORCE_loss(action_p=action_out)})
-        self.ram = bmodel
-        #model.compile(optimizer=keras.optimizers.SGD(lr=0.01, momentum=0.9, decay=0.0, nesterov=False), loss='categorical_crossentropy')
 
     def cat_ent(self, y_true, y_pred):
         return K.categorical_crossentropy(y_true, y_pred)
+
+    def dummy_loss(self, y_true, y_pred):
+        return K.sum(y_pred-y_pred, axis=-1)
 
 
 
@@ -109,58 +98,19 @@ class RAM():
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
         loc_input = np.reshape(loc, (self.batch_size, 2))
         ath = self.dense_to_one_hot(true_a)
+        #self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
+        #                        {'action_output': ath, 'location_output': ath}, epochs=1, batch_size=self.batch_size, verbose=1, shuffle=False)
+
+        self.ram_loc.set_weights(self.ram.get_weights())
         self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
                                 {'action_output': ath, 'location_output': ath}, epochs=1, batch_size=self.batch_size, verbose=0, shuffle=False)
+        self.ram_loc.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
+                     {'action_output': ath, 'location_output': ath}, epochs=1, batch_size=self.batch_size, verbose=0, shuffle=False)
+        self.ram.get_layer('location_output').set_weights(self.ram_loc.get_layer('location_output').get_weights())
 
-        #self.ram.reset_states()
-
-   # def __build_train_fn_REINFORCE(self):
-   #     """Create a train function
-   #     It replaces `model.fit(X, y)` because we use the output of model and use it for training.
-   #     For example, we need action placeholder
-   #     called `action_one_hot` that stores, which action we took at state `s`.
-   #     Hence, we can update the same action.
-   #     This function will create
-   #     `self.train_fn([state, action_one_hot, discount_reward])`
-   #     which would train the model.
-   #     """
-
-   #     print self.ram.trainable_weights
-   #     action_prob_placeholder = self.ram.output[0]
-   #     action_onehot_placeholder = K.placeholder(dtype=K.tf.float32, shape=(self.batch_size, self.output_dim),
-   #                                               name="action_onehot")
-   #   #  discount_reward_placeholder = K.placeholder(shape=(None, ),
-   #   #                                              name="discount_reward")
-
-   #     #TODO: Summation is wrong?
-   #     #action_prob = K.sum(action_prob_placeholder * action_onehot_placeholder, axis=1)
-   #     #log_action_prob = K.log(action_prob)
-   #     log_action_prob = K.log(action_prob_placeholder) * action_onehot_placeholder
-
-   #     loss = - log_action_prob #* discount_reward_placeholder
-   #     loss = K.mean(loss)
-
-
-   #     opt = keras.optimizers.sgd(momentum=0.)
-
-   #    # updates = opt.get_updates(params=self.ram.trainable_weights,
-   #    #                            loss='mse')
-
-   #    # self.train_fn = keras.function(inputs=[self.ram.input,
-   #    #                                    action_onehot_placeholder],
-   #    #                                   # discount_reward_placeholder],
-   #    #                            outputs=[],
-   #    #                            updates=updates)
-
-   #     updates_loc_net = opt.get_updates(params=self.ram.trainable_weights,#self.ram.get_layer(name='location_output').trainable_weights,
-                                 #  constraints=[],
-#                                   loss=loss)
-
-#        self.train_fn_loc_net = K.function(inputs=[self.ram.input,
-#                                               action_onehot_placeholder],
-                                               #discount_reward_placeholder],
- #                                      outputs=[],
-#                                       updates=updates_loc_net)
+    def reset_states(self):
+        self.ram.get_layer('rnn').reset_states()
+        self.ram_loc.get_layer('rnn').reset_states()
 
     def compute_discounted_R(self, R, discount_rate=.99):
         """Returns discounted rewards
@@ -199,6 +149,7 @@ class RAM():
     def choose_action(self,X,loc):
 
         glimpse_input = np.reshape(X, (self.batch_size, self.totalSensorBandwidth))
+        self.ram_loc.predict_on_batch({"glimpse_input": glimpse_input, 'location_input': loc})
         return self.ram.predict_on_batch({"glimpse_input": glimpse_input, 'location_input': loc})
         #gl_out = self.gl_net.predict_on_batch([glimpse_input, loc])
         #ram_out = self.ram.predict_on_batch(np.reshape(gl_out, (self.batch_size, 1, 256)))
