@@ -14,61 +14,56 @@ totalSensorBandwidth = depth * sensorBandwidth * sensorBandwidth * channels
 
 nGlimps = 6
 mnist = MNIST(mnist_size,batch_size,channels,minRadius,sensorBandwidth,depth)
-ram = RAM(totalSensorBandwidth, batch_size)
+ram = RAM(totalSensorBandwidth, batch_size, nGlimps)
 
 loc_sd = 0.11               # std when setting the location
-sample_locs = []
-mean_locs = []
+
 
 epoch = 0
 for i in range(500000):
-    if epoch % 5000 == 0:
+    if epoch % 5000 == 1:
         actions = []
         for j in range(100):
             X, Y= mnist.get_batch(batch_size)
-            initial_loc = np.random.uniform(-1, 1,(batch_size, 2))
-            mean_locs = []
-
-            mean_locs.append(initial_loc)
-            zooms =  mnist.glimpseSensor(X,initial_loc)
-            _, loc = ram.choose_action(zooms, initial_loc)
+            loc = np.random.uniform(-1, 1,(batch_size, 2))
 
             for n in range(nGlimps):
-                sample_loc = np.maximum(-1.0, np.minimum(1.0, loc + np.random.normal(0, loc_sd, loc.shape)))
+
+                sample_loc = np.fmax(-1.0, np.fmin(1.0, loc + np.random.normal(0, loc_sd, loc.shape)))
                 zooms = mnist.glimpseSensor(X,sample_loc)
                 a_prob, loc = ram.choose_action(zooms, sample_loc)
-                #
-                mean_locs.append(loc)
+                    #
             action = np.argmax(a_prob, axis=-1)
             actions.append(np.equal(action,Y).astype(np.float32))
             ram.reset_states()
 
         print np.mean(actions)
+    ram.mean_locs = []
+    ram.sampled_locs = []
     X, Y= mnist.get_batch(batch_size)
-    initial_loc = np.random.uniform(-1, 1,(batch_size, 2))
-    mean_locs.append(initial_loc)
-    #R = [[0 for x in range(1)] for y in range(batch_size)]
-
-    zooms =  mnist.glimpseSensor(X,initial_loc)
-    a_prob, loc = ram.choose_action(zooms, initial_loc)
-    action = np.argmax(a_prob, axis=-1)
-    #Compute reward
-    #r = np.equal(action,Y).astype(np.float32)
-    #for j in range(batch_size):
-    #    R[j].append(r[j])
-    #    del R[j][0]
+    loc = np.random.uniform(-1, 1,(batch_size, 2))
 
     for n in range(nGlimps-1):
+        ram.mean_locs.append(loc)
         sample_loc = np.maximum(-1.0, np.minimum(1.0, loc + np.random.normal(0, loc_sd, loc.shape)))
-        zooms = mnist.glimpseSensor(X,sample_loc)
+        ram.sampled_locs.append(sample_loc)
+        zooms = mnist.glimpseSensor(X, sample_loc)
         a_prob, loc = ram.choose_action(zooms, sample_loc)
+
     #
-        mean_locs.append(loc)
     #    r = np.equal(action,Y).astype(np.float32)
     #    for j in range(batch_size):
     #        R[j].append(r[j])
-    ram.train(zooms, loc, Y)
+    ram.mean_locs.append(loc)
+    action = np.argmax(a_prob, axis=-1)
+    sample_loc = np.maximum(-1.0, np.minimum(1.0, loc + np.random.normal(0, loc_sd, loc.shape)))
+    ram.sampled_locs.append(sample_loc)
+    zooms = mnist.glimpseSensor(X, sample_loc)
+    ram.train(zooms, sample_loc, Y)
     ram.reset_states()
+
+    if epoch % 25 == 0:
+        print "Epoch: {} --> Correct guess: {}".format(epoch, np.mean(np.equal(action,Y).astype(np.float32)))
     epoch += 1
 
 

@@ -24,7 +24,9 @@ class MNIST():
         return X,Y
 
     def glimpseSensor(self, img, normLoc):
+        assert not np.any(np.isnan(normLoc))," Locations have to be between 1, -1: {}".format(normLoc)
         assert np.any(np.abs(normLoc)<=1)," Locations have to be between 1, -1: {}".format(normLoc)
+
         loc = ((normLoc + 1) / 2) * self.mnist_size # normLoc coordinates are between -1 and 1
         loc = loc.astype(np.int32)
 
@@ -145,11 +147,6 @@ class MNIST():
         return padded
 
 
-    # to use for maximum likelihood with glimpse location
-    def gaussian_pdf(self, mean, sample):
-        Z = 1.0 / (self.loc_sd * np.sqrt(2.0 * np.math.pi))
-        a = -tf.square(sample - mean) / (2.0 * np.square(self.loc_sd))
-        return Z * tf.exp(a)
 
 def main():
     mnist = MNIST()
