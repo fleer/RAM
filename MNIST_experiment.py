@@ -21,23 +21,26 @@ loc_sd = 0.11               # std when setting the location
 
 epoch = 0
 for i in range(500000):
-    if epoch % 5000 == 1:
-        actions = []
-        for j in range(100):
-            X, Y= mnist.get_batch(batch_size)
-            loc = np.random.uniform(-1, 1,(batch_size, 2))
+   # if epoch % 5000 == 1:
+   #     actions = []
+   #     data = mnist.dataset.test
+   #     batches_in_epoch = len(data._images) // batch_size
+   #     accuracy = 0
 
-            for n in range(nGlimps):
+   #     for i in xrange(batches_in_epoch):
+   #         X, Y = mnist.dataset.test.next_batch(batch_size)
+   #         loc = np.random.uniform(-1, 1,(batch_size, 2))
 
-                sample_loc = np.fmax(-1.0, np.fmin(1.0, loc + np.random.normal(0, loc_sd, loc.shape)))
-                zooms = mnist.glimpseSensor(X,sample_loc)
-                a_prob, loc = ram.choose_action(zooms, sample_loc)
-                    #
-            action = np.argmax(a_prob, axis=-1)
-            actions.append(np.equal(action,Y).astype(np.float32))
-            ram.reset_states()
+   #         for n in range(nGlimps):
 
-        print np.mean(actions)
+   #             sample_loc = np.fmax(-1.0, np.fmin(1.0, loc + np.random.normal(0, loc_sd, loc.shape)))
+   #             zooms = mnist.glimpseSensor(X,sample_loc)
+   #             a_prob, loc = ram.choose_action(zooms, sample_loc)
+   #                 #
+   #         action = np.argmax(a_prob, axis=-1)
+   #         actions.append(np.equal(action,Y).astype(np.float32))
+   #         ram.reset_states()
+   #     print "Accuracy: {}".format(np.mean(actions))
     ram.mean_locs = []
     ram.sampled_locs = []
     X, Y= mnist.get_batch(batch_size)
@@ -62,9 +65,9 @@ for i in range(500000):
     ram.train(zooms, sample_loc, Y)
     ram.reset_states()
 
+    epoch += 1
     if epoch % 25 == 0:
         print "Epoch: {} --> Correct guess: {}".format(epoch, np.mean(np.equal(action,Y).astype(np.float32)))
-    epoch += 1
 
 
 #img = np.reshape(X, (batch_size, mnist_size, mnist_size, channels))
