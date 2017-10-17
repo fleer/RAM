@@ -18,6 +18,7 @@ class RAM():
         self.sampled_locs =[] #np.zeros((batch_size, glimpses, 2))
         self.mean_locs = [] #np.zeros((batch_size, glimpses, 2))
         self.big_net()
+        self.mean_reward = 0.
 
       #  self.ram = self.core_network()
       #  self.gl_net = self.glimpse_network()
@@ -41,9 +42,11 @@ class RAM():
             #R = K.reshape(R, (self.batch_size, 1))
             R = K.cast(R, 'float32')
             log_l = K.concatenate([K.log(action_p + 1e-5) * y_true, K.log(self.p_loc + 1e-5) * R], axis=-1)
+           # log_l = K.concatenate([K.batch_dot(K.log(action_p + 1e-5), y_true, axes=[1]),
+           #                                    K.batch_dot(K.log(self.p_loc + 1e-5), R)], axis=-1)
             #log_l =  K.log(self.p_loc + 1e-5) * R
-            loss = K.mean(log_l, axis=-1) + K.sum(y_pred-y_pred, axis= -1)
-            return -loss
+            loss = K.sum(log_l, axis=-1) + K.sum(y_pred-y_pred, axis= -1)
+            return - loss
         return rloss
 
     def big_net(self):
@@ -63,7 +66,7 @@ class RAM():
         glimpse_network_output = keras.layers.Dense(256,
                                                     activation='relu')(model_merge)
         rnn_input = keras.layers.Reshape([256,1])(glimpse_network_output)
-        model = keras.layers.recurrent.LSTM(256,recurrent_initializer="he_uniform", activation='relu',return_sequences=False, stateful=True, unroll=True, name = 'rnn')(rnn_input)
+        model = keras.layers.recurrent.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',return_sequences=False, stateful=True, unroll=True, name = 'rnn')(rnn_input)
 
         #    model = keras.layers.recurrent.SimpleRNN(256, activation='relu', use_bias=True, kernel_initializer='glorot_uniform',
     #                                     recurrent_initializer='orthogonal', bias_initializer='zeros',
@@ -114,13 +117,13 @@ class RAM():
         self.p_loc = np.reshape(self.p_loc, (self.batch_size, self.glimpses * 2))
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
       #  loc_input = np.reshape(loc, (self.batch_size, 2))
-        ath = self.dense_to_one_hot(true_a)
+        ath = keras.utils.to_categorical(true_a, self.output_dim)
         #self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
         #                        {'action_output': ath, 'location_output': ath}, epochs=1, batch_size=self.batch_size, verbose=1, shuffle=False)
        # self.ram_loc.set_weights(self.ram.get_weights())
         true_a = np.reshape(true_a, (self.batch_size,1))
         self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
-                                {'action_output': ath, 'location_output': true_a}, epochs=1, batch_size=self.batch_size, verbose=2, shuffle=False)
+                                {'action_output': ath, 'location_output': true_a}, epochs=1, batch_size=self.batch_size, verbose=0, shuffle=False)
        # self.ram_loc.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
        #              {'action_output': ath, 'location_output': ath}, epochs=1, batch_size=self.batch_size, verbose=0, shuffle=False)
        # self.ram.get_layer('location_output').set_weights(self.ram_loc.get_layer('location_output').get_weights())
@@ -152,17 +155,6 @@ class RAM():
         #discounted_r -= discounted_r.mean() / discounted_r.std()
 
         return discounted_r
-
-
-
-    def dense_to_one_hot(self, labels_dense, num_classes=10):
-        """Convert class labels from scalars to one-hot vectors."""
-        # copied from TensorFlow tutorial
-        num_labels = labels_dense.shape[0]
-        index_offset = np.arange(num_labels) * num_classes
-        labels_one_hot = np.zeros((num_labels, num_classes))
-        labels_one_hot.flat[index_offset + labels_dense.ravel()] = 1
-        return labels_one_hot
 
     def choose_action(self,X,loc):
 
