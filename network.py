@@ -14,11 +14,8 @@ class RAM():
         self.totalSensorBandwidth = totalSensorBandwidth
         self.batch_size = batch_size
         self.glimpses = glimpses
-        self.p_loc = np.zeros((batch_size, glimpses * 2), dtype='float32')
-        self.sampled_locs =[] #np.zeros((batch_size, glimpses, 2))
-        self.mean_locs = [] #np.zeros((batch_size, glimpses, 2))
         self.big_net()
-        self.mean_reward = 0.
+        self.__build_train_fn()
 
       #  self.ram = self.core_network()
       #  self.gl_net = self.glimpse_network()
@@ -33,17 +30,55 @@ class RAM():
         a = -np.square(np.asarray(sample) - np.asarray(mean)) / (2.0 * np.square(self.loc_std))
         return Z * np.exp(a)
 
+    def __build_train_fn(self):
+        """Create a train function
+        It replaces `model.fit(X, y)` because we use the output of model and use it for training.
+        For example, we need action placeholder
+        called `action_one_hot` that stores, which action we took at state `s`.
+        Hence, we can update the same action.
+        This function will create
+        `self.train_fn([state, action_one_hot, discount_reward])`
+        which would train the model.
+        """
+        action_prob_placeholder = self.ram.get_layer("action_output").output
+        location_prob_placeholder = self.ram.get_layer("location_output").output
+        action_onehot_placeholder = K.placeholder(shape=(None, self.output_dim),
+                                                  name="action_onehot")
+        location = K.placeholder(shape=(None, self.glimpses*2),
+                                                    name="sample_locations")
+        #action_prob = K.sum(action_prob_placeholder * action_onehot_placeholder, axis=1)
+        log_action_prob = K.log(action_prob_placeholder) * action_onehot_placeholder
+
+        max_p_y = K.argmax(action_prob_placeholder)
+        action = K.argmax(action_onehot_placeholder)
+        R = K.equal(max_p_y, action) # reward per example
+        R = K.cast(R, 'float32')
+        R = K.reshape(R, (self.batch_size,1))
+        log_loc = K.log(location + 1e-10) * R
+
+        loss = K.concatenate([log_action_prob, log_loc], axis=-1)
+        loss = K.sum(loss, axis=-1) + K.sum(location_prob_placeholder-location_prob_placeholder, axis=-1)
+        loss = - K.mean(loss, axis=-1)
+
+        adam = keras.optimizers.sdg(lr=0.001, momentum=0.9,)
+
+        updates = adam.get_updates(params=self.ram.trainable_weights,
+                                   constraints=self.ram.constraints,
+                                   loss=loss)
+
+        self.train_fn = K.function(inputs=[#self.ram.inputs,
+                                           self.ram.get_layer("glimpse_input").input,
+                                           self.ram.get_layer("location_input").input,
+                                           action_onehot_placeholder,
+                                           location],
+                                   outputs=[loss],
+                                   updates=updates)
+
+
     def REINFORCE_loss(self, action_p):
         def rloss(y_true, y_pred):
-            max_p_y = K.argmax(action_p, axis=-1)
-            max_p_y = K.reshape(max_p_y, (self.batch_size,1))
-            #k = max_p_y + K.cast(K.sum(y_pred-y_pred, axis= 0), 'int64')
-            R = K.equal(max_p_y, K.cast(y_true, 'int64')) # reward per example
-            #R = K.reshape(R, (self.batch_size, 1))
-            R = K.cast(R, 'float32')
-            log_l = K.concatenate([K.log(action_p + 1e-5) * y_true, K.log(self.p_loc + 1e-5) * R], axis=-1)
-           # log_l = K.concatenate([K.batch_dot(K.log(action_p + 1e-5), y_true, axes=[1]),
-           #                                    K.batch_dot(K.log(self.p_loc + 1e-5), R)], axis=-1)
+
+            log_l = K.concatenate([K.log(action_p + 1e-10) * y_true, self.p_loc], axis=-1)
             #log_l =  K.log(self.p_loc + 1e-5) * R
             loss = K.sum(log_l, axis=-1) + K.sum(y_pred-y_pred, axis= -1)
             return - loss
@@ -66,7 +101,9 @@ class RAM():
         glimpse_network_output = keras.layers.Dense(256,
                                                     activation='relu')(model_merge)
         rnn_input = keras.layers.Reshape([256,1])(glimpse_network_output)
-        model = keras.layers.recurrent.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',return_sequences=False, stateful=True, unroll=True, name = 'rnn')(rnn_input)
+        model = keras.layers.recurrent.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',
+                                                 return_sequences=False, stateful=True, unroll=True,
+                                                 name = 'rnn')(rnn_input)
 
         #    model = keras.layers.recurrent.SimpleRNN(256, activation='relu', use_bias=True, kernel_initializer='glorot_uniform',
     #                                     recurrent_initializer='orthogonal', bias_initializer='zeros',
@@ -80,26 +117,15 @@ class RAM():
                                  name='action_output'
                                  )(model)
         location_out = keras.layers.Dense(2,
-                                 activation='tanh',
-                                 name='location_output'
+                                 activation='linear',
+                                 name='location_output',
                                  )(model)
 
         self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out])
         #self.ram.compile(optimizer=keras.optimizers.adam(lr=0.001),
-        self.ram.compile(optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.9, decay=0.0, nesterov=False),
-                         loss={'action_output': 'categorical_crossentropy',
-                               'location_output': self.REINFORCE_loss(action_p=action_out)})
-        #self.ram.compile(optimizer=keras.optimizers.SGD(lr=0.01, momentum=0.9, decay=0.0, nesterov=False),
-        #self.ram.compile(optimizer=keras.optimizers.adam(lr=0.01),
-        #                 loss={'action_output': 'categorical_crossentropy', 'location_output': self.dummy_loss})
-
-        #self.ram_loc = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out])
-        #self.ram_loc.compile(optimizer=keras.optimizers.SGD(lr=0.01, momentum=0.9, decay=0.0, nesterov=False),
-        #self.ram_loc.compile(optimizer=keras.optimizers.adam(lr=0.01),
-        #                 loss={'action_output': self.dummy_loss, 'location_output': self.REINFORCE_loss(action_p=action_out)})
-
-        #self.ram_loc.set_weights(self.ram.get_weights())
-
+       # self.ram.compile(optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.9, decay=0.0, nesterov=False),
+       #                  loss={'action_output': 'categorical_crossentropy',
+       #                        'location_output': self.REINFORCE_loss(action_p=action_out)})
 
 
     def cat_ent(self, y_true, y_pred):
@@ -109,25 +135,18 @@ class RAM():
         return K.sum(y_pred-y_pred, axis=-1)
 
 
-    def train(self, zooms, loc_input, true_a):
+    def train(self, zooms, loc_input, true_a, p_loc):
         #self.discounted_r = np.zeros((self.batch_size, 1))
         #for b in range(self.batch_size):
         #    self.discounted_r[b] = np.sum(self.compute_discounted_R(r[b], .99))
-        self.p_loc = self.gaussian_pdf(self.mean_locs, self.sampled_locs)
-        self.p_loc = np.reshape(self.p_loc, (self.batch_size, self.glimpses * 2))
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
       #  loc_input = np.reshape(loc, (self.batch_size, 2))
-        ath = keras.utils.to_categorical(true_a, self.output_dim)
+
+        loss = self.train_fn([glimpse_input, loc_input, true_a, p_loc])
+        #ath = keras.utils.to_categorical(true_a, self.output_dim)
         #self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
         #                        {'action_output': ath, 'location_output': ath}, epochs=1, batch_size=self.batch_size, verbose=1, shuffle=False)
-       # self.ram_loc.set_weights(self.ram.get_weights())
-        true_a = np.reshape(true_a, (self.batch_size,1))
-        self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
-                                {'action_output': ath, 'location_output': true_a}, epochs=1, batch_size=self.batch_size, verbose=0, shuffle=False)
-       # self.ram_loc.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
-       #              {'action_output': ath, 'location_output': ath}, epochs=1, batch_size=self.batch_size, verbose=0, shuffle=False)
-       # self.ram.get_layer('location_output').set_weights(self.ram_loc.get_layer('location_output').get_weights())
-
+        return loss
     def reset_states(self):
         self.ram.reset_states()
       #  self.ram.get_layer('rnn').reset_states()
@@ -148,11 +167,12 @@ class RAM():
         """
         discounted_r = np.zeros_like(R, dtype=np.float32)
         running_add = 0
+        print R
         for t in reversed(range(len(R))):
             running_add = running_add * discount_rate + R[t]
             discounted_r[t] = running_add
 
-        #discounted_r -= discounted_r.mean() / discounted_r.std()
+        discounted_r -= discounted_r.mean() / discounted_r.std()
 
         return discounted_r
 
@@ -174,7 +194,7 @@ class RAM():
 
 def main():
     totalSensorBandwidth = 3 * 8 * 8 * 1
-    ram = RAM(totalSensorBandwidth, 32)
+    ram = RAM(totalSensorBandwidth, 32, 6)
 
 
 if __name__ == '__main__':

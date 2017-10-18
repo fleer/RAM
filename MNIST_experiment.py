@@ -1,27 +1,28 @@
 from MNIST_Domain import MNIST
 from network import RAM
 import numpy as np
+import keras
 
 import matplotlib.pyplot as plt
 
 mnist_size = 28
-batch_size = 10
+batch_size = 20
 channels = 1 # grayscale
 minRadius = 4 # zooms -> minRadius * 2**<depth_level>
 sensorBandwidth = 8 # fixed resolution of sensor
-depth = 3 # zooms
+depth = 1 # zooms
 totalSensorBandwidth = depth * sensorBandwidth * sensorBandwidth * channels
 
-nGlimps = 6
+nGlimpse = 6
 mnist = MNIST(mnist_size,batch_size,channels,minRadius,sensorBandwidth,depth)
-ram = RAM(totalSensorBandwidth, batch_size, nGlimps)
+ram = RAM(totalSensorBandwidth, batch_size, nGlimpse)
 
 loc_sd = 0.11               # std when setting the location
 
 
 epoch = 0
 for i in range(500000):
-    if epoch % 5000 == 1:
+    if epoch % 50000 == 1000:
         actions = []
         data = mnist.dataset.test
         batches_in_epoch = len(data._images) // batch_size
@@ -31,7 +32,7 @@ for i in range(500000):
             X, Y = mnist.dataset.test.next_batch(batch_size)
             loc = np.random.uniform(-1, 1,(batch_size, 2))
 
-            for n in range(nGlimps):
+            for n in range(nGlimpse):
 
                 sample_loc = np.fmax(-1.0, np.fmin(1.0, loc + np.random.normal(0, loc_sd, loc.shape)))
                 zooms = mnist.glimpseSensor(X,sample_loc)
@@ -41,33 +42,47 @@ for i in range(500000):
             actions.append(np.equal(action,Y).astype(np.float32))
             ram.reset_states()
         print "Accuracy: {}".format(np.mean(actions))
-    ram.mean_locs = []
-    ram.sampled_locs = []
     X, Y= mnist.get_batch(batch_size)
-    loc = np.random.uniform(-1, 1,(batch_size, 2))
+    mean_locs = np.zeros((batch_size, nGlimpse, 2))
+    sample_locs = np.zeros((batch_size, nGlimpse, 2))
+    loc = np.random.uniform(-1, 1, (batch_size, 2))
+    sample_loc = np.tanh(loc + np.random.normal(0, loc_sd, loc.shape))
+    for i in range(batch_size):
+        mean_locs[i][0][0] = loc[i][0]
+        mean_locs[i][0][1] = loc[i][1]
+        sample_locs[i][0][0] = sample_loc[i][0]
+        sample_locs[i][0][1] = sample_loc[i][1]
 
-    for n in range(nGlimps-1):
-        ram.mean_locs.append(loc)
-        sample_loc = np.maximum(-1.0, np.minimum(1.0, loc + np.random.normal(0, loc_sd, loc.shape)))
-        ram.sampled_locs.append(sample_loc)
+    for n in range(1, nGlimpse):
         zooms = mnist.glimpseSensor(X, sample_loc)
         a_prob, loc = ram.choose_action(zooms, sample_loc)
+        sample_loc = np.maximum(-1.0, np.minimum(1.0, loc + np.random.normal(0, loc_sd, loc.shape)))
+        for i in range(batch_size):
+                mean_locs[i][n][0] = loc[i][0]
+                mean_locs[i][n][1] = loc[i][1]
+                sample_locs[i][n][0] = sample_loc[i][0]
+                sample_locs[i][n][1] = sample_loc[i][1]
 
-    #
-    #    r = np.equal(action,Y).astype(np.float32)
-    #    for j in range(batch_size):
-    #        R[j].append(r[j])
-    ram.mean_locs.append(loc)
-    action = np.argmax(a_prob, axis=-1)
-    sample_loc = np.maximum(-1.0, np.minimum(1.0, loc + np.random.normal(0, loc_sd, loc.shape)))
-    ram.sampled_locs.append(sample_loc)
     zooms = mnist.glimpseSensor(X, sample_loc)
-    ram.train(zooms, sample_loc, Y)
+   # max_p_y = np.argmax(a_prob, axis=-1)
+   # R = np.equal(max_p_y, Y.astype('int64')) # reward per example
+   # R = np.reshape(R, (batch_size, 1))
+   # R = R.astype('float32')
+    p_loc = ram.gaussian_pdf(mean_locs.reshape((batch_size, nGlimpse * 2)), sample_locs.reshape((batch_size, nGlimpse * 2)))
+    p_loc = np.tanh(p_loc)
+    p_loc = np.reshape(p_loc, (batch_size, nGlimpse * 2))
+   #
+    ath = keras.utils.to_categorical(Y, 10)
+   # l2= np.log(p_loc) * R
+   # l1 = np.log(a_prob) * ath
+   # c = np.concatenate([l1,l2], axis=-1)
+   # d = np.sum(c, axis=-1)
+    loss = ram.train(zooms, sample_loc, ath, p_loc)
     ram.reset_states()
 
     epoch += 1
-    if epoch % 25 == 0:
-        print "Epoch: {} --> Correct guess: {}".format(epoch, np.mean(np.equal(action,Y).astype(np.float32)))
+    if epoch % 5000 == 0:
+        print "Epoch: {} --> Correct guess: {} --> Loss: {}".format(epoch, np.mean(np.equal(np.argmax(a_prob, axis=-1),Y).astype(np.float32)), loss)
 
 
 #img = np.reshape(X, (batch_size, mnist_size, mnist_size, channels))
