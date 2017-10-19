@@ -2,15 +2,19 @@ from MNIST_Domain import MNIST
 from network import RAM
 import numpy as np
 import keras
+from collections import defaultdict
+import os
+import json
 
 import matplotlib.pyplot as plt
+
 
 mnist_size = 28
 batch_size = 20
 channels = 1 # grayscale
 minRadius = 4 # zooms -> minRadius * 2**<depth_level>
 sensorBandwidth = 8 # fixed resolution of sensor
-depth = 1 # zooms
+depth = 3 # zooms
 totalSensorBandwidth = depth * sensorBandwidth * sensorBandwidth * channels
 
 nGlimpse = 6
@@ -19,10 +23,12 @@ ram = RAM(totalSensorBandwidth, batch_size, nGlimpse)
 
 loc_sd = 0.11               # std when setting the location
 
+results = defaultdict(list)
 
 epoch = 0
+
 for i in range(500000):
-    if epoch % 50000 == 1000:
+    if epoch % 10000 == 0:
         actions = []
         data = mnist.dataset.test
         batches_in_epoch = len(data._images) // batch_size
@@ -31,18 +37,34 @@ for i in range(500000):
         for i in xrange(batches_in_epoch):
             X, Y = mnist.dataset.test.next_batch(batch_size)
             loc = np.random.uniform(-1, 1,(batch_size, 2))
-
+            sample_loc = np.tanh(loc + np.random.normal(0, loc_sd, loc.shape))
+            mean_locs = np.zeros((batch_size, nGlimpse, 2))
+            sample_locs = np.zeros((batch_size, nGlimpse, 2))
+            for i in range(batch_size):
+                mean_locs[i][0][0] = loc[i][0]
+                mean_locs[i][0][1] = loc[i][1]
+                sample_locs[i][0][0] = sample_loc[i][0]
+                sample_locs[i][0][1] = sample_loc[i][1]
             for n in range(nGlimpse):
-
-                sample_loc = np.fmax(-1.0, np.fmin(1.0, loc + np.random.normal(0, loc_sd, loc.shape)))
                 zooms = mnist.glimpseSensor(X,sample_loc)
-                a_prob, loc = ram.choose_action(zooms, sample_loc)
-                    #
+                a_prob, loc, _ = ram.choose_action(zooms, sample_loc)
+                mean_loc = np.fmax(-1.0, np.fmin(1.0, loc + sample_locs[:,-1]))
+                sample_loc = np.fmax(-1.0, np.fmin(1.0, mean_loc + np.random.normal(0, loc_sd, loc.shape)))
+                for i in range(batch_size):
+                    mean_locs[i][n][0] = mean_loc[i][0]
+                    mean_locs[i][n][1] = mean_loc[i][1]
+                    sample_locs[i][n][0] = sample_loc[i][0]
+                    sample_locs[i][n][1] = sample_loc[i][1]
             action = np.argmax(a_prob, axis=-1)
             actions.append(np.equal(action,Y).astype(np.float32))
             ram.reset_states()
+
+            results['learning_steps'].append(epoch)
+            results["return"].append(np.mean(actions))
+
         print "Accuracy: {}".format(np.mean(actions))
     X, Y= mnist.get_batch(batch_size)
+    baseline = np.zeros((batch_size, nGlimpse, 2))
     mean_locs = np.zeros((batch_size, nGlimpse, 2))
     sample_locs = np.zeros((batch_size, nGlimpse, 2))
     loc = np.random.uniform(-1, 1, (batch_size, 2))
@@ -55,13 +77,15 @@ for i in range(500000):
 
     for n in range(1, nGlimpse):
         zooms = mnist.glimpseSensor(X, sample_loc)
-        a_prob, loc = ram.choose_action(zooms, sample_loc)
-        sample_loc = np.maximum(-1.0, np.minimum(1.0, loc + np.random.normal(0, loc_sd, loc.shape)))
+        a_prob, loc, bl = ram.choose_action(zooms, sample_loc)
+        mean_loc = np.fmax(-1.0, np.fmin(1.0, loc + sample_locs[:,-1]))
+        sample_loc = np.fmax(-1.0, np.fmin(1.0, mean_loc + np.random.normal(0, loc_sd, loc.shape)))
         for i in range(batch_size):
-                mean_locs[i][n][0] = loc[i][0]
-                mean_locs[i][n][1] = loc[i][1]
+                mean_locs[i][n][0] = mean_loc[i][0]
+                mean_locs[i][n][1] = mean_loc[i][1]
                 sample_locs[i][n][0] = sample_loc[i][0]
                 sample_locs[i][n][1] = sample_loc[i][1]
+                baseline[i][n] = bl[i]
 
     zooms = mnist.glimpseSensor(X, sample_loc)
    # max_p_y = np.argmax(a_prob, axis=-1)
@@ -70,20 +94,28 @@ for i in range(500000):
    # R = R.astype('float32')
     p_loc = ram.gaussian_pdf(mean_locs.reshape((batch_size, nGlimpse * 2)), sample_locs.reshape((batch_size, nGlimpse * 2)))
     p_loc = np.tanh(p_loc)
-    p_loc = np.reshape(p_loc, (batch_size, nGlimpse * 2))
-   #
+    #p_loc = np.reshape(p_loc, (batch_size, nGlimpse * 2))
     ath = keras.utils.to_categorical(Y, 10)
+
    # l2= np.log(p_loc) * R
    # l1 = np.log(a_prob) * ath
    # c = np.concatenate([l1,l2], axis=-1)
    # d = np.sum(c, axis=-1)
-    loss = ram.train(zooms, sample_loc, ath, p_loc)
+    loss, R, b = ram.train(zooms, sample_loc, ath, p_loc, baseline)
     ram.reset_states()
 
     epoch += 1
-    if epoch % 5000 == 0:
-        print "Epoch: {} --> Correct guess: {} --> Loss: {}".format(epoch, np.mean(np.equal(np.argmax(a_prob, axis=-1),Y).astype(np.float32)), loss)
+    if epoch % 20 == 0:
+        #print "Epoch: {} --> Correct guess: {} --> Baseline: {} --> Loss: {}".format(epoch, np.mean(np.equal(np.argmax(a_prob, axis=-1),Y).astype(np.float32)), b, loss)
+        print "Epoch: {} --> Reward: {} --> R-B: {}" \
+              " --> Loss: {}".format(epoch, np.mean(R), np.mean(R)-np.mean(b), loss)
 
+"""Saves the experimental results to ``results.json`` file
+"""
+results_fn = os.path.join('./', 'results.json')
+with open(results_fn, "w") as f:
+    json.dump(results, f, indent=4, sort_keys=True)
+f.close()
 
 #img = np.reshape(X, (batch_size, mnist_size, mnist_size, channels))
 #fig = plt.figure()

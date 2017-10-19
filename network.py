@@ -2,6 +2,7 @@ import keras
 from keras import backend as K
 from keras import layers
 import numpy as np
+# from RWA import RWA
 
 class RAM():
 
@@ -46,21 +47,27 @@ class RAM():
                                                   name="action_onehot")
         location = K.placeholder(shape=(None, self.glimpses*2),
                                                     name="sample_locations")
+        baseline = K.placeholder(shape=(None, self.glimpses*2),
+                                 name="baseline")
+
         #action_prob = K.sum(action_prob_placeholder * action_onehot_placeholder, axis=1)
-        log_action_prob = K.log(action_prob_placeholder) * action_onehot_placeholder
+        log_action_prob = K.log(action_prob_placeholder + 1e-10) * action_onehot_placeholder
 
         max_p_y = K.argmax(action_prob_placeholder)
         action = K.argmax(action_onehot_placeholder)
         R = K.equal(max_p_y, action) # reward per example
         R = K.cast(R, 'float32')
-        R = K.reshape(R, (self.batch_size,1))
-        log_loc = K.log(location + 1e-10) * R
+        R_out = K.reshape(R, (self.batch_size,1))
+
+        R = K.tile(R_out, [1, (self.glimpses)*2])
+        log_loc = K.log(location + 1e-10) * (R-baseline)
 
         loss = K.concatenate([log_action_prob, log_loc], axis=-1)
         loss = K.sum(loss, axis=-1) + K.sum(location_prob_placeholder-location_prob_placeholder, axis=-1)
+        loss = loss - K.sum(K.square(R - baseline), axis=-1)
         loss = - K.mean(loss, axis=-1)
 
-        adam = keras.optimizers.sdg(lr=0.001, momentum=0.9,)
+        adam = keras.optimizers.sgd(lr=0.001, momentum=0.9)
 
         updates = adam.get_updates(params=self.ram.trainable_weights,
                                    constraints=self.ram.constraints,
@@ -70,8 +77,10 @@ class RAM():
                                            self.ram.get_layer("glimpse_input").input,
                                            self.ram.get_layer("location_input").input,
                                            action_onehot_placeholder,
-                                           location],
-                                   outputs=[loss],
+                                           location,
+                                           baseline
+                                            ],
+                                   outputs=[loss, R_out],
                                    updates=updates)
 
 
@@ -87,41 +96,75 @@ class RAM():
     def big_net(self):
         glimpse_model_i = keras.layers.Input(batch_shape=(self.batch_size, self.totalSensorBandwidth),
                                              name='glimpse_input')
-        glimpse_model = keras.layers.Dense(128, activation='relu')(glimpse_model_i)
-        glimpse_model_out = keras.layers.Dense(256)(glimpse_model)
+        glimpse_model = keras.layers.Dense(128, activation='relu',
+                                           kernel_initializer=keras.initializers.random_uniform(),
+                                           bias_initializer=keras.initializers.random_uniform(),
+                                           )(glimpse_model_i)
+
+        glimpse_model_out = keras.layers.Dense(256,
+                                           kernel_initializer=keras.initializers.random_uniform(),
+                                           bias_initializer=keras.initializers.random_uniform(),
+                                           activation='relu'
+                                               )(glimpse_model)
 
         location_model_i = keras.layers.Input(batch_shape=(self.batch_size, 2),
                                               name='location_input')
         location_model = keras.layers.Dense(128,
-                                            activation = 'relu'
+                                            activation = 'relu',
+                                            kernel_initializer=keras.initializers.random_uniform(),
+                                            bias_initializer=keras.initializers.random_uniform(),
                                             )(location_model_i)
-        location_model_out = keras.layers.Dense(256)(location_model)
+
+        location_model_out = keras.layers.Dense(256,
+                                            kernel_initializer=keras.initializers.random_uniform(),
+                                            bias_initializer=keras.initializers.random_uniform(),
+                                            activation='relu'
+                                                )(location_model)
 
         model_merge = keras.layers.add([glimpse_model_out, location_model_out])
-        glimpse_network_output = keras.layers.Dense(256,
-                                                    activation='relu')(model_merge)
-        rnn_input = keras.layers.Reshape([256,1])(glimpse_network_output)
-        model = keras.layers.recurrent.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',
-                                                 return_sequences=False, stateful=True, unroll=True,
-                                                 name = 'rnn')(rnn_input)
+        #glimpse_network_output  = keras.layers.activations.relu(model_merge)
 
-        #    model = keras.layers.recurrent.SimpleRNN(256, activation='relu', use_bias=True, kernel_initializer='glorot_uniform',
-    #                                     recurrent_initializer='orthogonal', bias_initializer='zeros',
-    #                                     kernel_regularizer=None, recurrent_regularizer=None, bias_regularizer=None,
-    #                                     activity_regularizer=None, kernel_constraint=None, recurrent_constraint=None,
-    #                                     bias_constraint=None, dropout=0.0, recurrent_dropout=0.0,
-    #                                     return_sequences=False, return_state=False, go_backwards=False, stateful=True,
-    #                                     unroll=False, name = 'rnn')(rnn_input)
+      #  model_merge = keras.layers.add([glimpse_model, location_model])
+      #  glimpse_network_output = keras.layers.Dense(256,
+      #                                              kernel_initializer=keras.initializers.random_uniform(),
+      #                                              bias_initializer=keras.initializers.random_uniform(),
+      #                                              activation='relu')(model_merge)
+        rnn_input = keras.layers.Reshape((256,1))(model_merge)
+        model_output = keras.layers.recurrent.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',
+                                                return_sequences=False, stateful=True, unroll=True,
+                                                kernel_initializer=keras.initializers.random_uniform(),
+                                                bias_initializer=keras.initializers.random_uniform(),
+                                                name = 'rnn')(rnn_input)
+
+        #model = RWA(256,recurrent_initializer="zeros", activation='relu',
+        #                                         return_sequences=False, stateful=True, unroll=True,
+        #                                         kernel_initializer=keras.initializers.random_uniform(),
+        #                                         average_initializer = keras.initializers.random_uniform(),
+        #                                         bias_initializer=keras.initializers.random_uniform(),
+        #                                         name = 'rnn')(rnn_input)
         action_out = keras.layers.Dense(10,
                                  activation='softmax',
-                                 name='action_output'
-                                 )(model)
+                                 kernel_initializer=keras.initializers.random_uniform(),
+                                 bias_initializer=keras.initializers.random_uniform(),
+                                 name='action_output',
+                                 trainable=False
+                                 )(model_output)
         location_out = keras.layers.Dense(2,
                                  activation='linear',
+                                 kernel_initializer=keras.initializers.random_uniform(),
+                                 bias_initializer=keras.initializers.random_uniform(),
                                  name='location_output',
-                                 )(model)
+                                 trainable=False
+                                 )(model_output)
+        baseline_output = keras.layers.Dense(1,
+                                 activation='sigmoid',
+                                 kernel_initializer=keras.initializers.random_uniform(),
+                                 bias_initializer=keras.initializers.random_uniform(),
+                                 name='baseline_output',
+                                 trainable=False
+                                         )(model_output)
 
-        self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out])
+        self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out, baseline_output])
         #self.ram.compile(optimizer=keras.optimizers.adam(lr=0.001),
        # self.ram.compile(optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.9, decay=0.0, nesterov=False),
        #                  loss={'action_output': 'categorical_crossentropy',
@@ -135,18 +178,23 @@ class RAM():
         return K.sum(y_pred-y_pred, axis=-1)
 
 
-    def train(self, zooms, loc_input, true_a, p_loc):
+    def train(self, zooms, loc_input, true_a, p_loc, b):
+        #b = np.stack(b)
+      #  b = np.concatenate([b, b], axis=2)
+      #  print b
+        b = np.reshape(b, (self.batch_size, (self.glimpses) * 2))
+
         #self.discounted_r = np.zeros((self.batch_size, 1))
         #for b in range(self.batch_size):
         #    self.discounted_r[b] = np.sum(self.compute_discounted_R(r[b], .99))
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
       #  loc_input = np.reshape(loc, (self.batch_size, 2))
 
-        loss = self.train_fn([glimpse_input, loc_input, true_a, p_loc])
+        loss, R = self.train_fn([glimpse_input, loc_input, true_a, p_loc, b])
         #ath = keras.utils.to_categorical(true_a, self.output_dim)
         #self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
         #                        {'action_output': ath, 'location_output': ath}, epochs=1, batch_size=self.batch_size, verbose=1, shuffle=False)
-        return loss
+        return loss, R, np.mean(b, axis=-1)
     def reset_states(self):
         self.ram.reset_states()
       #  self.ram.get_layer('rnn').reset_states()
@@ -191,6 +239,10 @@ class RAM():
 
     def get_best_action(self,prob_a):
         return np.argmax(prob_a)
+
+
+
+
 
 def main():
     totalSensorBandwidth = 3 * 8 * 8 * 1

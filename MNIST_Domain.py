@@ -39,11 +39,11 @@ class MNIST():
             imgZooms = []
             one_img = img[k,:,:,:]
             max_radius = self.minRadius * (2 ** (self.depth - 1))
-            offset = max_radius
+            offset = 2 * max_radius
 
             # pad image with zeros
             one_img = self.pad_to_bounding_box(one_img, offset, offset, \
-                max_radius * 2 + self.mnist_size, max_radius * 2 + self.mnist_size)
+                max_radius * 4 + self.mnist_size, max_radius * 4 + self.mnist_size)
 
             for i in xrange(self.depth):
                 r = int(self.minRadius * (2 ** (i - 1)))
@@ -64,7 +64,7 @@ class MNIST():
                 #zoom = slice(one_img2, adjusted_loc, d)
                 zoom = one_img2[adjusted_loc[0]:adjusted_loc[0]+d[0], adjusted_loc[1]:adjusted_loc[1]+d[1]]
                 assert not np.any(np.equal(zoom.shape, (0,0))), "Picture has size 0, location {}, depth {}".format(adjusted_loc, d)
-               # zoom = np.reshape(zoom, (1, d_raw, d_raw, 1))
+                #zoom = np.reshape(zoom, (1, d_raw, d_raw, 1))
 
 
                 # resize cropped image to (sensorBandwidth x sensorBandwidth)
