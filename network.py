@@ -70,7 +70,7 @@ class RAM():
         adam = keras.optimizers.sgd(lr=0.001, momentum=0.9)
 
         updates = adam.get_updates(params=self.ram.trainable_weights,
-                                   constraints=self.ram.constraints,
+                                   #constraints=self.ram.constraints,
                                    loss=loss)
 
         self.train_fn = K.function(inputs=[#self.ram.inputs,
@@ -80,7 +80,7 @@ class RAM():
                                            location,
                                            baseline
                                             ],
-                                   outputs=[loss, R_out],
+                                   outputs=[loss, R_out, log_loc, log_action_prob],
                                    updates=updates)
 
 
@@ -93,6 +93,14 @@ class RAM():
             return - loss
         return rloss
 
+    def merge_layer(self,inputs):
+            output = inputs[0]
+            for i in range(1, len(inputs)):
+                output += inputs[i]
+            #return K.relu(output, alpha=0.)
+            return output
+
+
     def big_net(self):
         glimpse_model_i = keras.layers.Input(batch_shape=(self.batch_size, self.totalSensorBandwidth),
                                              name='glimpse_input')
@@ -104,7 +112,6 @@ class RAM():
         glimpse_model_out = keras.layers.Dense(256,
                                            kernel_initializer=keras.initializers.random_uniform(),
                                            bias_initializer=keras.initializers.random_uniform(),
-                                           activation='relu'
                                                )(glimpse_model)
 
         location_model_i = keras.layers.Input(batch_shape=(self.batch_size, 2),
@@ -118,18 +125,19 @@ class RAM():
         location_model_out = keras.layers.Dense(256,
                                             kernel_initializer=keras.initializers.random_uniform(),
                                             bias_initializer=keras.initializers.random_uniform(),
-                                            activation='relu'
                                                 )(location_model)
-
-        model_merge = keras.layers.add([glimpse_model_out, location_model_out])
-        #glimpse_network_output  = keras.layers.activations.relu(model_merge)
+        #model_merge = K.relu(keras.layers.Lambda(lambda x: x[0] + x[1])([location_model_out, glimpse_model_out]))
+        model_merge = keras.layers.add([location_model_out, glimpse_model_out])
+        #model_merge = keras.layers.add([glimpse_model_out, location_model_out])
+        #model_merge = self.merge_layer([glimpse_model_out, location_model_out])
+        glimpse_network_output  = keras.layers.Lambda(lambda x: K.relu(x))(model_merge)
 
       #  model_merge = keras.layers.add([glimpse_model, location_model])
       #  glimpse_network_output = keras.layers.Dense(256,
       #                                              kernel_initializer=keras.initializers.random_uniform(),
       #                                              bias_initializer=keras.initializers.random_uniform(),
       #                                              activation='relu')(model_merge)
-        rnn_input = keras.layers.Reshape((256,1))(model_merge)
+        rnn_input = keras.layers.Reshape((256,1))(glimpse_network_output)
         model_output = keras.layers.recurrent.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',
                                                 return_sequences=False, stateful=True, unroll=True,
                                                 kernel_initializer=keras.initializers.random_uniform(),
@@ -147,14 +155,13 @@ class RAM():
                                  kernel_initializer=keras.initializers.random_uniform(),
                                  bias_initializer=keras.initializers.random_uniform(),
                                  name='action_output',
-                                 trainable=False
                                  )(model_output)
         location_out = keras.layers.Dense(2,
                                  activation='linear',
                                  kernel_initializer=keras.initializers.random_uniform(),
                                  bias_initializer=keras.initializers.random_uniform(),
                                  name='location_output',
-                                 trainable=False
+                                 #trainable=False
                                  )(model_output)
         baseline_output = keras.layers.Dense(1,
                                  activation='sigmoid',
@@ -190,11 +197,11 @@ class RAM():
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
       #  loc_input = np.reshape(loc, (self.batch_size, 2))
 
-        loss, R = self.train_fn([glimpse_input, loc_input, true_a, p_loc, b])
+        loss, R, log_a, log_l = self.train_fn([glimpse_input, loc_input, true_a, p_loc, b])
         #ath = keras.utils.to_categorical(true_a, self.output_dim)
         #self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
         #                        {'action_output': ath, 'location_output': ath}, epochs=1, batch_size=self.batch_size, verbose=1, shuffle=False)
-        return loss, R, np.mean(b, axis=-1)
+        return loss, R, np.mean(b, axis=-1), np.mean(log_a, axis=-1), np.mean(log_l, axis=-1)
     def reset_states(self):
         self.ram.reset_states()
       #  self.ram.get_layer('rnn').reset_states()

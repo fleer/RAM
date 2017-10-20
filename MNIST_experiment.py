@@ -101,14 +101,14 @@ for i in range(500000):
    # l1 = np.log(a_prob) * ath
    # c = np.concatenate([l1,l2], axis=-1)
    # d = np.sum(c, axis=-1)
-    loss, R, b = ram.train(zooms, sample_loc, ath, p_loc, baseline)
+    loss, R, b, la, ll = ram.train(zooms, sample_loc, ath, p_loc, baseline)
     ram.reset_states()
 
     epoch += 1
     if epoch % 20 == 0:
         #print "Epoch: {} --> Correct guess: {} --> Baseline: {} --> Loss: {}".format(epoch, np.mean(np.equal(np.argmax(a_prob, axis=-1),Y).astype(np.float32)), b, loss)
-        print "Epoch: {} --> Reward: {} --> R-B: {}" \
-              " --> Loss: {}".format(epoch, np.mean(R), np.mean(R)-np.mean(b), loss)
+        print "Epoch: {} --> Reward: {} --> R-B: {} --> log_a: {} --> log_l: {}" \
+              " --> Loss: {}".format(epoch, np.mean(R), np.mean(R)-np.mean(b), la, ll, loss)
 
 """Saves the experimental results to ``results.json`` file
 """
