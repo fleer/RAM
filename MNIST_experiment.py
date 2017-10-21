@@ -10,15 +10,15 @@ import matplotlib.pyplot as plt
 
 
 mnist_size = 28
-batch_size = 20
+batch_size = 32
 channels = 1 # grayscale
 minRadius = 4 # zooms -> minRadius * 2**<depth_level>
-sensorBandwidth = 8 # fixed resolution of sensor
-depth = 3 # zooms
-totalSensorBandwidth = depth * sensorBandwidth * sensorBandwidth * channels
+sensorResolution = 8 # fixed resolution of sensor
+nZooms = 3 # zooms
+totalSensorBandwidth = nZooms * sensorResolution * sensorResolution * channels
 
 nGlimpse = 6
-mnist = MNIST(mnist_size,batch_size,channels,minRadius,sensorBandwidth,depth)
+mnist = MNIST(mnist_size, batch_size, channels, minRadius, sensorResolution, nZooms)
 ram = RAM(totalSensorBandwidth, batch_size, nGlimpse)
 
 loc_sd = 0.11               # std when setting the location
@@ -27,8 +27,8 @@ results = defaultdict(list)
 
 epoch = 0
 
-for i in range(500000):
-    if epoch % 10000 == 0:
+for i in range(100000):
+    if epoch % 5000 == 0:
         actions = []
         data = mnist.dataset.test
         batches_in_epoch = len(data._images) // batch_size
@@ -101,14 +101,14 @@ for i in range(500000):
    # l1 = np.log(a_prob) * ath
    # c = np.concatenate([l1,l2], axis=-1)
    # d = np.sum(c, axis=-1)
-    loss, R, b, la, ll = ram.train(zooms, sample_loc, ath, p_loc, baseline)
+    loss, R, b = ram.train(zooms, sample_loc, ath, p_loc, baseline)
     ram.reset_states()
 
     epoch += 1
-    if epoch % 20 == 0:
+    if epoch % 200 == 0:
         #print "Epoch: {} --> Correct guess: {} --> Baseline: {} --> Loss: {}".format(epoch, np.mean(np.equal(np.argmax(a_prob, axis=-1),Y).astype(np.float32)), b, loss)
-        print "Epoch: {} --> Reward: {} --> R-B: {} --> log_a: {} --> log_l: {}" \
-              " --> Loss: {}".format(epoch, np.mean(R), np.mean(R)-np.mean(b), la, ll, loss)
+        print "Epoch: {} --> Reward: {} --> R-B: {}" \
+              " --> Loss: {}".format(epoch, np.mean(R), np.mean(R)-np.mean(b), loss)
 
 """Saves the experimental results to ``results.json`` file
 """

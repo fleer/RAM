@@ -80,7 +80,7 @@ class RAM():
                                            location,
                                            baseline
                                             ],
-                                   outputs=[loss, R_out, log_loc, log_action_prob],
+                                   outputs=[loss, R_out],
                                    updates=updates)
 
 
@@ -177,14 +177,6 @@ class RAM():
        #                  loss={'action_output': 'categorical_crossentropy',
        #                        'location_output': self.REINFORCE_loss(action_p=action_out)})
 
-
-    def cat_ent(self, y_true, y_pred):
-        return K.categorical_crossentropy(y_true, y_pred)
-
-    def dummy_loss(self, y_true, y_pred):
-        return K.sum(y_pred-y_pred, axis=-1)
-
-
     def train(self, zooms, loc_input, true_a, p_loc, b):
         #b = np.stack(b)
       #  b = np.concatenate([b, b], axis=2)
@@ -197,11 +189,11 @@ class RAM():
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
       #  loc_input = np.reshape(loc, (self.batch_size, 2))
 
-        loss, R, log_a, log_l = self.train_fn([glimpse_input, loc_input, true_a, p_loc, b])
+        loss, R = self.train_fn([glimpse_input, loc_input, true_a, p_loc, b])
         #ath = keras.utils.to_categorical(true_a, self.output_dim)
         #self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
         #                        {'action_output': ath, 'location_output': ath}, epochs=1, batch_size=self.batch_size, verbose=1, shuffle=False)
-        return loss, R, np.mean(b, axis=-1), np.mean(log_a, axis=-1), np.mean(log_l, axis=-1)
+        return loss, R, np.mean(b, axis=-1)
     def reset_states(self):
         self.ram.reset_states()
       #  self.ram.get_layer('rnn').reset_states()
