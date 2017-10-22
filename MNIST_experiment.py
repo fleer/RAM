@@ -27,8 +27,8 @@ results = defaultdict(list)
 
 epoch = 0
 
-for i in range(100000):
-    if epoch % 5000 == 0:
+for i in range(1000):
+    if epoch % 50 == 0:
         actions = []
         data = mnist.dataset.test
         batches_in_epoch = len(data._images) // batch_size
@@ -59,8 +59,8 @@ for i in range(100000):
             actions.append(np.equal(action,Y).astype(np.float32))
             ram.reset_states()
 
-            results['learning_steps'].append(epoch)
-            results["return"].append(np.mean(actions))
+        results['learning_steps'].append(epoch)
+        results['return'].append(repr(np.mean(actions)))
 
         print "Accuracy: {}".format(np.mean(actions))
     X, Y= mnist.get_batch(batch_size)
