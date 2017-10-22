@@ -27,8 +27,8 @@ results = defaultdict(list)
 
 epoch = 0
 
-for i in range(1000):
-    if epoch % 50 == 0:
+for i in range(100000):
+    if epoch % 5000 == 0:
         actions = []
         data = mnist.dataset.test
         batches_in_epoch = len(data._images) // batch_size
