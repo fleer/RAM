@@ -62,7 +62,7 @@ for i in range(100000):
         results['learning_steps'].append(epoch)
         results['return'].append(actions/float(batches_in_epoch))
 
-        print "Accuracy: {}".format(np.mean(actions))
+        print "Accuracy: {}".format(actions/float(batches_in_epoch))
     X, Y= mnist.get_batch(batch_size)
     baseline = np.zeros((batch_size, nGlimpse, 2))
     mean_locs = np.zeros((batch_size, nGlimpse, 2))
