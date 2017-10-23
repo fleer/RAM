@@ -8,27 +8,34 @@ import json
 
 import matplotlib.pyplot as plt
 
+class Experiment():
 
-mnist_size = 28
-batch_size = 32
-channels = 1 # grayscale
-minRadius = 4 # zooms -> minRadius * 2**<depth_level>
-sensorResolution = 8 # fixed resolution of sensor
-nZooms = 3 # zooms
-totalSensorBandwidth = nZooms * sensorResolution * sensorResolution * channels
 
-nGlimpse = 6
-mnist = MNIST(mnist_size, batch_size, channels, minRadius, sensorResolution, nZooms)
-ram = RAM(totalSensorBandwidth, batch_size, nGlimpse)
+    def __init__(self):
 
-loc_sd = 0.11               # std when setting the location
+        mnist_size = 28
+        batch_size = 32
+        channels = 1 # grayscale
+        minRadius = 4 # zooms -> minRadius * 2**<depth_level>
+        sensorResolution = 8 # fixed resolution of sensor
+        nZooms = 3 # zooms
+        totalSensorBandwidth = nZooms * sensorResolution * sensorResolution * channels
 
-results = defaultdict(list)
+        nGlimpse = 6
+        mnist = MNIST(mnist_size, batch_size, channels, minRadius, sensorResolution, nZooms)
+        ram = RAM(totalSensorBandwidth, batch_size, nGlimpse)
 
-epoch = 0
+        loc_sd = 0.11               # std when setting the location
 
-for i in range(100000):
-    if epoch % 5000 == 0:
+        results = defaultdict(list)
+
+        epoch = 0
+        num_policy_checks = 20
+        max_steps = 100000
+
+
+
+    def performance_run(self):
         actions = []
         data = mnist.dataset.test
         batches_in_epoch = len(data._images) // batch_size
@@ -63,6 +70,14 @@ for i in range(100000):
         results['return'].append(repr(np.mean(actions)))
 
         print "Accuracy: {}".format(np.mean(actions))
+
+for i in range(100000):
+    # Check Performance
+    if total_steps % (self.max_steps / self.num_policy_checks) == 0:
+
+        self.performance_run(total_steps, episode_number)
+
+    if epoch % 5000 == 0:
     X, Y= mnist.get_batch(batch_size)
     baseline = np.zeros((batch_size, nGlimpse, 2))
     mean_locs = np.zeros((batch_size, nGlimpse, 2))
