@@ -1,4 +1,4 @@
-#from experiment import Experiment
+from MNIST_experiment import Experiment
 import numpy as np
 
 class MNIST_DOMAIN_OPTIONS:
@@ -26,11 +26,13 @@ class MNIST_DOMAIN_OPTIONS:
     # Resolution of the Sensor
     SENSOR = 8
     # Number of zooms
-    NZOOMS = 1
+    NZOOMS = 3
+    # Minimal zoom size # zooms -> minRadius * 2**<depth_level>
+    MIN_ZOOM = 4
     # Number of Glimpses
     NGLIMPSES = 6
     # Standard Deviation of the Location Policy
-    LOC_SD = 0.11
+    LOC_STD = 0.11
 
 class PARAMETERS:
     """
@@ -44,11 +46,12 @@ class PARAMETERS:
     #   =========================
 
     #   Number of learning steps
-    MAX_STEPS = 4000000
-
+    MAX_STEPS = 200000
+    #   Number of times, the current
+    #   Policy should be avaluated
+    NUM_POLICY_CHECKS = 10
     #   Batch size
     BATCH_SIZE = 32
-
 
     #   =========================
     #   Algorithm specific parameters
@@ -59,11 +62,11 @@ class PARAMETERS:
     #   adam
     #   adadelta
     #   sgd
-    OPTIMIZER = 'sgd'
+    OPTIMIZER = 'adam'
     # Learning rate alpha
-    LEARNING_RATE = 0.001
+    LEARNING_RATE = 0.0001
     # Momentum
-    MOMENTUM = 0.9
+    MOMENTUM = 0.
     #Discount factor gamma
     DISCOUNT = 0.95
 
@@ -71,7 +74,7 @@ def main():
     params = PARAMETERS
     dom_opt = MNIST_DOMAIN_OPTIONS
     for i in range(1, 11):
-        exp = MNIST_Experiment(params, dom_opt, "./{0:03}".format(i) + "-results.json")
+        exp = Experiment(params, dom_opt, "./{0:03}".format(i) + "-results.json")
         del exp
 
 

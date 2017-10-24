@@ -5,7 +5,7 @@ import cv2
 
 class MNIST():
 
-    def __init__(self, mnist_size, batch_size, channels, minRadius, sensorBandwidth,depth):
+    def __init__(self, mnist_size, batch_size, channels, minRadius, sensorBandwidth,depth, loc_std):
 
         self.mnist_size = mnist_size
         self.batch_size = batch_size
@@ -16,8 +16,14 @@ class MNIST():
         self.depth = depth # zooms
         self.dataset = tf_mnist_loader.read_data_sets("mnist_data")
 
-        self.loc_sd = 0.11               # std when setting the location
+        self.loc_std = loc_std # std when setting the location
 
+
+    # to use for maximum likelihood with glimpse location
+    def gaussian_pdf(self, mean, sample):
+        Z = 1.0 / (self.loc_std * np.sqrt(2.0 * np.math.pi))
+        a = -np.square(np.asarray(sample) - np.asarray(mean)) / (2.0 * np.square(self.loc_std))
+        return Z * np.exp(a)
 
     def get_batch(self, batch_size):
         X, Y = self.dataset.test.next_batch(batch_size)

@@ -8,15 +8,16 @@ class RAM():
 
     loc_std = 0.11
     glimpses = 6
-    def __init__(self, totalSensorBandwidth, batch_size, glimpses):
+    def __init__(self, totalSensorBandwidth, batch_size, glimpses, optimizer, lr, momentum, discount):
 
+        # TODO --> Integrate Discount Factor for Reward
         self.discounted_r = np.zeros((batch_size, 1))
         self.output_dim = 10
         self.totalSensorBandwidth = totalSensorBandwidth
         self.batch_size = batch_size
         self.glimpses = glimpses
         self.big_net()
-        self.__build_train_fn()
+        self.__build_train_fn(optimizer, lr, momentum)
 
       #  self.ram = self.core_network()
       #  self.gl_net = self.glimpse_network()
@@ -25,13 +26,8 @@ class RAM():
 
 
 
-    # to use for maximum likelihood with glimpse location
-    def gaussian_pdf(self, mean, sample):
-        Z = 1.0 / (self.loc_std * np.sqrt(2.0 * np.math.pi))
-        a = -np.square(np.asarray(sample) - np.asarray(mean)) / (2.0 * np.square(self.loc_std))
-        return Z * np.exp(a)
 
-    def __build_train_fn(self):
+    def __build_train_fn(self, opt, lr, mom):
         """Create a train function
         It replaces `model.fit(X, y)` because we use the output of model and use it for training.
         For example, we need action placeholder
@@ -67,9 +63,20 @@ class RAM():
         loss = loss - K.sum(K.square(R - baseline), axis=-1)
         loss = - K.mean(loss, axis=-1)
 
-        adam = keras.optimizers.sgd(lr=0.001, momentum=0.9)
 
-        updates = adam.get_updates(params=self.ram.trainable_weights,
+        # Choose Optimizer:
+        if opt == "rmsprop":
+            optimizer = keras.optimizers.rmsprop(lr=lr)
+        elif opt== "adam":
+            optimizer = keras.optimizers.adam(lr=lr)
+        elif opt== "adadelta":
+            optimizer = keras.optimizers.adadelta(lr=lr)
+        elif opt== 'sgd':
+            optimizer = keras.optimizers.sgd(lr=lr, momentum=mom)
+        else:
+            raise ValueError("Unrecognized update: {}".format(opt))
+
+        updates = optimizer.get_updates(params=self.ram.trainable_weights,
                                    #constraints=self.ram.constraints,
                                    loss=loss)
 
