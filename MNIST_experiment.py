@@ -133,7 +133,7 @@ class Experiment():
             if total_steps % 200 == 0:
                 logging.info("Total Steps={:d}: >>> steps/second: {:.2f}, average loss: {:.4f}, "
                              "Reward: {:.2f}, R-b: {}".format(total_steps,
-                             (time.time()-start_time), loss, np.mean(R),np.mean(R-b)))
+                             1./(time.time()-start_time), loss, np.mean(R),np.mean(R-b)))
 
     def save(self, path, filename):
         """Saves the experimental results to ``results.json`` file
