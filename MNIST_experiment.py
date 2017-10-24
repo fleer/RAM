@@ -63,11 +63,11 @@ class Experiment():
                     sample_locs[i][n][0] = sample_loc[i][0]
                     sample_locs[i][n][1] = sample_loc[i][1]
             action = np.argmax(a_prob, axis=-1)
-            actions.append(np.equal(action,Y).astype(np.float32))
+            actions += np.mean(np.equal(action,Y).astype(np.float32))
             ram.reset_states()
 
         results['learning_steps'].append(epoch)
-        results['return'].append(repr(np.mean(actions)))
+        results['return'].append(actions/float(batches_in_epoch))
 
         print "Accuracy: {}".format(np.mean(actions))
 
