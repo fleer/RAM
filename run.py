@@ -46,7 +46,7 @@ class PARAMETERS:
     #   =========================
 
     #   Number of learning steps
-    MAX_STEPS = 200000
+    MAX_STEPS = 500000
     #   Number of times, the current
     #   Policy should be avaluated
     NUM_POLICY_CHECKS = 10
@@ -62,11 +62,11 @@ class PARAMETERS:
     #   adam
     #   adadelta
     #   sgd
-    OPTIMIZER = 'adam'
+    OPTIMIZER = 'sgd'
     # Learning rate alpha
-    LEARNING_RATE = 0.0001
+    LEARNING_RATE = 0.001
     # Momentum
-    MOMENTUM = 0.
+    MOMENTUM = 0.9
     #Discount factor gamma
     DISCOUNT = 0.95
 

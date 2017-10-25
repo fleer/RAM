@@ -112,26 +112,26 @@ class RAM():
         glimpse_model_i = keras.layers.Input(batch_shape=(self.batch_size, self.totalSensorBandwidth),
                                              name='glimpse_input')
         glimpse_model = keras.layers.Dense(128, activation='relu',
-                                           kernel_initializer=keras.initializers.random_uniform(),
-                                           bias_initializer=keras.initializers.random_uniform(),
+                                           kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                           bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                            )(glimpse_model_i)
 
         glimpse_model_out = keras.layers.Dense(256,
-                                           kernel_initializer=keras.initializers.random_uniform(),
-                                           bias_initializer=keras.initializers.random_uniform(),
+                                           kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                           bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                                )(glimpse_model)
 
         location_model_i = keras.layers.Input(batch_shape=(self.batch_size, 2),
                                               name='location_input')
         location_model = keras.layers.Dense(128,
                                             activation = 'relu',
-                                            kernel_initializer=keras.initializers.random_uniform(),
-                                            bias_initializer=keras.initializers.random_uniform(),
+                                            kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                            bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                             )(location_model_i)
 
         location_model_out = keras.layers.Dense(256,
-                                            kernel_initializer=keras.initializers.random_uniform(),
-                                            bias_initializer=keras.initializers.random_uniform(),
+                                            kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                            bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                                 )(location_model)
         #model_merge = K.relu(keras.layers.Lambda(lambda x: x[0] + x[1])([location_model_out, glimpse_model_out]))
         model_merge = keras.layers.add([location_model_out, glimpse_model_out])
@@ -147,8 +147,8 @@ class RAM():
         rnn_input = keras.layers.Reshape((256,1))(glimpse_network_output)
         model_output = keras.layers.recurrent.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',
                                                 return_sequences=False, stateful=True, unroll=True,
-                                                kernel_initializer=keras.initializers.random_uniform(),
-                                                bias_initializer=keras.initializers.random_uniform(),
+                                                kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                                bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                                 name = 'rnn')(rnn_input)
 
         #model = RWA(256,recurrent_initializer="zeros", activation='relu',
@@ -159,21 +159,21 @@ class RAM():
         #                                         name = 'rnn')(rnn_input)
         action_out = keras.layers.Dense(10,
                                  activation='softmax',
-                                 kernel_initializer=keras.initializers.random_uniform(),
-                                 bias_initializer=keras.initializers.random_uniform(),
+                                 kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                 bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  name='action_output',
                                  )(model_output)
         location_out = keras.layers.Dense(2,
                                  activation='linear',
-                                 kernel_initializer=keras.initializers.random_uniform(),
-                                 bias_initializer=keras.initializers.random_uniform(),
+                                 kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                 bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  name='location_output',
-                                 #trainable=False
+                                 trainable=False
                                  )(model_output)
         baseline_output = keras.layers.Dense(1,
                                  activation='sigmoid',
-                                 kernel_initializer=keras.initializers.random_uniform(),
-                                 bias_initializer=keras.initializers.random_uniform(),
+                                 kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                 bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  name='baseline_output',
                                  trainable=False
                                          )(model_output)

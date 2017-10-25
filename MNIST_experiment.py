@@ -46,6 +46,7 @@ class Experiment():
                        PARAMETERS.MOMENTUM, PARAMETERS.DISCOUNT)
 
         self.train()
+        self.save('./', results_file)
 
     def performance_run(self, total_steps):
         actions = 0.
@@ -66,7 +67,8 @@ class Experiment():
             for n in range(self.nGlimpses):
                 zooms = self.mnist.glimpseSensor(X,sample_loc)
                 a_prob, loc, _ = self.ram.choose_action(zooms, sample_loc)
-                mean_loc = np.fmax(-1.0, np.fmin(1.0, loc + sample_locs[:,-1]))
+                mean_loc = loc
+                #mean_loc = np.fmax(-1.0, np.fmin(1.0, loc + sample_locs[:,-1]))
                 sample_loc = np.fmax(-1.0, np.fmin(1.0, mean_loc + np.random.normal(0, self.loc_std, loc.shape)))
                 for i in range(self.batch_size):
                     mean_locs[i][n][0] = mean_loc[i][0]
@@ -106,7 +108,8 @@ class Experiment():
             for n in range(1, self.nGlimpses):
                 zooms = self.mnist.glimpseSensor(X, sample_loc)
                 a_prob, loc, bl = self.ram.choose_action(zooms, sample_loc)
-                mean_loc = np.fmax(-1.0, np.fmin(1.0, loc + sample_locs[:,-1]))
+                #mean_loc = np.fmax(-1.0, np.fmin(1.0, loc + sample_locs[:,-1]))
+                mean_loc = loc
                 sample_loc = np.fmax(-1.0, np.fmin(1.0, mean_loc + np.random.normal(0, self.loc_std, loc.shape)))
                 for i in range(self.batch_size):
                         mean_locs[i][n][0] = mean_loc[i][0]
