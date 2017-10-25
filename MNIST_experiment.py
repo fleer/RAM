@@ -66,7 +66,7 @@ class Experiment():
                 sample_locs[i][0][1] = sample_loc[i][1]
             for n in range(self.nGlimpses):
                 zooms = self.mnist.glimpseSensor(X,sample_loc)
-                a_prob, loc, _ = self.ram.choose_action(zooms, sample_loc)
+                a_prob, loc = self.ram.choose_action(zooms, sample_loc)
                 mean_loc = loc
                 #mean_loc = np.fmax(-1.0, np.fmin(1.0, loc + sample_locs[:,-1]))
                 sample_loc = np.fmax(-1.0, np.fmin(1.0, mean_loc + np.random.normal(0, self.loc_std, loc.shape)))
@@ -107,7 +107,7 @@ class Experiment():
 
             for n in range(1, self.nGlimpses):
                 zooms = self.mnist.glimpseSensor(X, sample_loc)
-                a_prob, loc, bl = self.ram.choose_action(zooms, sample_loc)
+                a_prob, loc = self.ram.choose_action(zooms, sample_loc)
                 #mean_loc = np.fmax(-1.0, np.fmin(1.0, loc + sample_locs[:,-1]))
                 mean_loc = loc
                 sample_loc = np.fmax(-1.0, np.fmin(1.0, mean_loc + np.random.normal(0, self.loc_std, loc.shape)))
@@ -116,16 +116,12 @@ class Experiment():
                         mean_locs[i][n][1] = mean_loc[i][1]
                         sample_locs[i][n][0] = sample_loc[i][0]
                         sample_locs[i][n][1] = sample_loc[i][1]
-                        baseline[i][n] = bl[i]
 
             zooms = self.mnist.glimpseSensor(X, sample_loc)
-            p_loc = self.mnist.gaussian_pdf(mean_locs.reshape((self.batch_size, self.nGlimpses * 2)),
-                                            sample_locs.reshape((self.batch_size, self.nGlimpses * 2)))
-            p_loc = np.tanh(p_loc)
             ath = keras.utils.to_categorical(Y, 10)
-            loss, R, b = self.ram.train(zooms, sample_loc, ath, p_loc, baseline)
+            loss_a, loss_l, loss_b, R = self.ram.train(zooms, sample_loc, ath)
             self.ram.reset_states()
-
+            print "Action_L: {}, Location_L: [], Baseline_L: {}".format(loss_a, loss_l, loss_b)
             total_steps += 1
 
             # Check Performance
@@ -135,8 +131,8 @@ class Experiment():
 
             if total_steps % 200 == 0:
                 logging.info("Total Steps={:d}: >>> steps/second: {:.2f}, average loss: {:.4f}, "
-                             "Reward: {:.2f}, R-b: {}".format(total_steps,
-                             1./(time.time()-start_time), loss, np.mean(R),np.mean(R-b)))
+                             "Reward: {:.2f}".format(total_steps,
+                             1./(time.time()-start_time), loss_l, np.mean(R)))
 
     def save(self, path, filename):
         """Saves the experimental results to ``results.json`` file
