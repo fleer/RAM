@@ -6,9 +6,8 @@ import numpy as np
 
 class RAM():
 
-    loc_std = 0.11
     glimpses = 6
-    def __init__(self, totalSensorBandwidth, batch_size, glimpses, optimizer, lr, momentum, discount):
+    def __init__(self, totalSensorBandwidth, batch_size, glimpses, optimizer, lr, momentum, discount, loc_std):
 
         # TODO --> Integrate Discount Factor for Reward
         self.discounted_r = np.zeros((batch_size, 1))
@@ -17,18 +16,10 @@ class RAM():
         self.batch_size = batch_size
         self.glimpses = glimpses
         self.big_net()
-        self.__build_train_fn(optimizer, lr, momentum)
+        self.__build_train_fn(optimizer, lr, momentum, loc_std)
 
 
-      #  self.ram = self.core_network()
-      #  self.gl_net = self.glimpse_network()
-      #  self.act_net = self.action_network()
-      #  self.loc_net = self.location_network()
-
-
-
-
-    def __build_train_fn(self, opt, lr, mom):
+    def __build_train_fn(self, opt, lr, mom, loc_std):
         """Create a train function
         It replaces `model.fit(X, y)` because we use the output of model and use it for training.
         For example, we need action placeholder
@@ -38,34 +29,42 @@ class RAM():
         `self.train_fn([state, action_one_hot, discount_reward])`
         which would train the model.
         """
+
         action_prob_placeholder = self.ram.get_layer("action_output").output
         action_onehot_placeholder = K.placeholder(shape=(None, self.output_dim),
                                                   name="action_onehot")
-
         location_mean_placeholder = K.placeholder(shape=(None, 2),
                                                   name="location_mean")
-
         location_prob_placeholder = self.ram.get_layer("location_output").output
-
         baseline = self.ram.get_layer("baseline_output").output
-
 
 
         max_p_y = K.argmax(action_prob_placeholder)
         action = K.argmax(action_onehot_placeholder)
+
+        # Get Reward for current step
         R = K.equal(max_p_y, action) # reward per example
         R = K.cast(R, 'float32')
         R_out = K.reshape(R, (self.batch_size,1))
 
+        # Compute Categorial Crossentropy as action loss
+        # More precicesly: REINFROCE algorithm for action with baseline
         log_action_prob = (K.log(action_prob_placeholder + 1e-10) * action_onehot_placeholder) * (R_out-baseline)
-
         loss_action = - K.mean(log_action_prob, axis=-1) + K.sum(location_prob_placeholder-location_prob_placeholder, axis=-1)
 
-       # R = K.tile(R_out, [1, 2])
-       # b = K.tile(baseline, [1, 2])
 
-        log_loc = K.sum(location_prob_placeholder - location_mean_placeholder/self.loc_std**2, axis=-1) * (R_out -baseline)
-        #log_loc = K.sum(K.log(location_prob_placeholder + 1e-10), axis=-1) * (R_out -baseline)
+        # Individual loss for location network
+        # Compute loss via REINFORCE algorithm
+        # for gaussian distribution
+        # d ln(f(m,s,x))   (x - m)
+        # -------------- = -------- with m = mean, x = sample, s = standard_deviation
+        #       d m          s**2
+
+        #TODO: Check how to deal with the 2 dims (x,y) of location
+        # log_loc = K.sum( location_prob_placeholder - location_mean_placeholder/loc_std**2, axis=-1) * (R_out -baseline)
+        R = K.tile(R_out, [1, 2])
+        b = K.tile(baseline, [1, 2])
+        log_loc = location_prob_placeholder - location_mean_placeholder/loc_std**2 * (R -b)
         loss_loc = -K.mean(log_loc, axis=-1)
 
         loss_b = K.mean(K.square(baseline - R_out), axis=-1)
@@ -81,16 +80,8 @@ class RAM():
             optimizer = keras.optimizers.sgd(lr=lr, momentum=mom)
         else:
             raise ValueError("Unrecognized update: {}".format(opt))
-     #   list = self.ram.get_layer('glimpse_input').trainable_weights,
-     #   list.(self.ram.get_layer('glimpse_2').trainable_weights,
-     #                                           self.ram.get_layer('glimpse_3').trainable_weights,
-     #                                           self.ram.get_layer('location_input').trainable_weights,
-     #                                           self.ram.get_layer('location_1').trainable_weights,
-     #                                           self.ram.get_layer('location_2').trainable_weights,
-     #                                           self.ram.get_layer('add').trainable_weights,
-     #                                           self.ram.get_layer('rnn').trainable_weights,
-     #                                           self.ram.get_layer('action_output').trainable_weights)
-        updates = optimizer.get_updates(params=self.ram_weights.trainable_weights,
+
+        updates = optimizer.get_updates(params= self.ram_weights.trainable_weights,
                                    #constraints=self.ram.constraints,
                                    loss=loss_action)
 

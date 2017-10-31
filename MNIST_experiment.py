@@ -43,7 +43,7 @@ class Experiment():
         self.mnist = MNIST(mnist_size, self.batch_size, channels, minRadius, sensorResolution, self.nZooms, self.loc_std)
         self.ram = RAM(totalSensorBandwidth, self.batch_size, self.nGlimpses,
                        PARAMETERS.OPTIMIZER, PARAMETERS.LEARNING_RATE,
-                       PARAMETERS.MOMENTUM, PARAMETERS.DISCOUNT)
+                       PARAMETERS.MOMENTUM, PARAMETERS.DISCOUNT, DOMAIN_OPTIONS.LOC_STD)
 
         self.train()
         self.save('./', results_file)
@@ -121,8 +121,8 @@ class Experiment():
             ath = keras.utils.to_categorical(Y, 10)
             loss_a, loss_l, loss_b, R = self.ram.train(zooms, sample_loc, ath, mean_locs)
             self.ram.reset_states()
-           # if total_steps % 20 == 0:
-           #     print "Action_L: {}, Location_L: {}, Baseline_L: {}".format(loss_a, loss_l, loss_b)
+#            if total_steps % 20 == 0:
+#                print "Action_L: {}, Location_L: {}, Baseline_L: {}".format(loss_a, loss_l, loss_b)
             total_steps += 1
 
             # Check Performance
