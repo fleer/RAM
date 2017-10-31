@@ -41,6 +41,10 @@ class RAM():
         action_prob_placeholder = self.ram.get_layer("action_output").output
         action_onehot_placeholder = K.placeholder(shape=(None, self.output_dim),
                                                   name="action_onehot")
+
+        location_mean_placeholder = K.placeholder(shape=(None, 2),
+                                                  name="location_mean")
+
         location_prob_placeholder = self.ram.get_layer("location_output").output
 
         baseline = self.ram.get_layer("baseline_output").output
@@ -54,11 +58,14 @@ class RAM():
         R_out = K.reshape(R, (self.batch_size,1))
 
         log_action_prob = (K.log(action_prob_placeholder + 1e-10) * action_onehot_placeholder) * (R_out-baseline)
-        loss_action = - K.mean(log_action_prob, axis=-1)
 
-        R = K.tile(R_out, [1, 2])
-        b = K.tile(baseline, [1, 2])
-        log_loc = K.log(location_prob_placeholder + 1e-10) * (R-b)
+        loss_action = - K.mean(log_action_prob, axis=-1) + K.sum(location_prob_placeholder-location_prob_placeholder, axis=-1)
+
+       # R = K.tile(R_out, [1, 2])
+       # b = K.tile(baseline, [1, 2])
+
+        log_loc = K.sum(location_prob_placeholder - location_mean_placeholder/self.loc_std**2, axis=-1) * (R_out -baseline)
+        #log_loc = K.sum(K.log(location_prob_placeholder + 1e-10), axis=-1) * (R_out -baseline)
         loss_loc = -K.mean(log_loc, axis=-1)
 
         loss_b = K.mean(K.square(baseline - R_out), axis=-1)
@@ -74,26 +81,27 @@ class RAM():
             optimizer = keras.optimizers.sgd(lr=lr, momentum=mom)
         else:
             raise ValueError("Unrecognized update: {}".format(opt))
-        list = self.ram.get_layer('glimpse_input').trainable_weights,
-        list.(self.ram.get_layer('glimpse_2').trainable_weights,
-                                                self.ram.get_layer('glimpse_3').trainable_weights,
-                                                self.ram.get_layer('location_input').trainable_weights,
-                                                self.ram.get_layer('location_1').trainable_weights,
-                                                self.ram.get_layer('location_2').trainable_weights,
-                                                self.ram.get_layer('add').trainable_weights,
-                                                self.ram.get_layer('rnn').trainable_weights,
-                                                self.ram.get_layer('action_output').trainable_weights)
-        updates = optimizer.get_updates(params=list,
+     #   list = self.ram.get_layer('glimpse_input').trainable_weights,
+     #   list.(self.ram.get_layer('glimpse_2').trainable_weights,
+     #                                           self.ram.get_layer('glimpse_3').trainable_weights,
+     #                                           self.ram.get_layer('location_input').trainable_weights,
+     #                                           self.ram.get_layer('location_1').trainable_weights,
+     #                                           self.ram.get_layer('location_2').trainable_weights,
+     #                                           self.ram.get_layer('add').trainable_weights,
+     #                                           self.ram.get_layer('rnn').trainable_weights,
+     #                                           self.ram.get_layer('action_output').trainable_weights)
+        updates = optimizer.get_updates(params=self.ram_weights.trainable_weights,
                                    #constraints=self.ram.constraints,
                                    loss=loss_action)
+
         optimizer_l = keras.optimizers.sgd(lr=lr, momentum=mom)
         optimizer_b = keras.optimizers.sgd(lr=lr, momentum=mom)
 
-        updates_l = optimizer.get_updates(params= self.ram.get_layer('location_output').trainable_weights,
+        updates_l = optimizer_l.get_updates(params= self.ram.get_layer('location_output').trainable_weights,
                                         #constraints=self.ram.constraints,
                                         loss=loss_loc)
 
-        updates_b = optimizer.get_updates(params= self.ram.get_layer('baseline_output').trainable_weights,
+        updates_b = optimizer_b.get_updates(params= self.ram.get_layer('baseline_output').trainable_weights,
                                         #constraints=self.ram.constraints,
                                         loss=loss_b)
 
@@ -101,25 +109,21 @@ class RAM():
                                           self.ram.get_layer("glimpse_input").input,
                                            self.ram.get_layer("location_input").input
                                             ],
-                                   outputs=[loss_action, loss_loc, loss_b, R_out],
-                                   updates=[updates, updates_l, updates_b])
-
-
-    def REINFORCE_loss(self, action_p):
-        def rloss(y_true, y_pred):
-
-            log_l = K.concatenate([K.log(action_p + 1e-10) * y_true, self.p_loc], axis=-1)
-            #log_l =  K.log(self.p_loc + 1e-5) * R
-            loss = K.sum(log_l, axis=-1) + K.sum(y_pred-y_pred, axis= -1)
-            return - loss
-        return rloss
-
-    def merge_layer(self,inputs):
-            output = inputs[0]
-            for i in range(1, len(inputs)):
-                output += inputs[i]
-            #return K.relu(output, alpha=0.)
-            return output
+                                   outputs=[loss_action, R_out],
+                                   updates=updates)#, updates_l, updates_b])
+        self.train_fn_loc = K.function(inputs=[action_onehot_placeholder,
+                                            location_mean_placeholder,
+                                           self.ram.get_layer("glimpse_input").input,
+                                           self.ram.get_layer("location_input").input
+                                           ],
+                                   outputs= [loss_loc],
+                                   updates= updates_l)
+        self.train_fn_b = K.function(inputs=[action_onehot_placeholder,
+                                           self.ram.get_layer("glimpse_input").input,
+                                           self.ram.get_layer("location_input").input
+                                           ],
+                                   outputs= [loss_b, baseline],
+                                   updates= updates_b)
 
 
     def big_net(self):
@@ -182,7 +186,7 @@ class RAM():
                                  name='action_output',
                                  )(model_output)
         location_out = keras.layers.Dense(2,
-                                 activation='linear',
+                                 activation='tanh',
                                  kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  name='location_output',
@@ -194,17 +198,18 @@ class RAM():
                                  name='baseline_output',
                                          )(model_output)
 
+        self.ram_weights = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=action_out)
         self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out, baseline_output])
         #self.ram.compile(optimizer=keras.optimizers.adam(lr=0.001),
        # self.ram.compile(optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.9, decay=0.0, nesterov=False),
        #                  loss={'action_output': 'categorical_crossentropy',
        #                        'location_output': self.REINFORCE_loss(action_p=action_out)})
 
-    def train(self, zooms, loc_input, true_a, p_loc, b):
+    def train(self, zooms, loc_input, true_a, loc_mean):
         #b = np.stack(b)
       #  b = np.concatenate([b, b], axis=2)
       #  print b
-        b = np.reshape(b, (self.batch_size, (self.glimpses) * 2))
+
 
         #self.discounted_r = np.zeros((self.batch_size, 1))
         #for b in range(self.batch_size):
@@ -212,11 +217,14 @@ class RAM():
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
       #  loc_input = np.reshape(loc, (self.batch_size, 2))
 
-        loss, R = self.train_fn([glimpse_input, loc_input, true_a, p_loc, b])
+        l_mean = np.mean(loc_mean, axis=-2)
+        loss, R = self.train_fn([true_a, glimpse_input, loc_input])
+        loss_l = self.train_fn_loc([true_a, l_mean, glimpse_input, loc_input])
+        loss_b, b = self.train_fn_b([true_a, glimpse_input, loc_input])
         #ath = keras.utils.to_categorical(true_a, self.output_dim)
         #self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
         #                        {'action_output': ath, 'location_output': ath}, epochs=1, batch_size=self.batch_size, verbose=1, shuffle=False)
-        return loss, R, np.mean(b, axis=-1)
+        return np.mean(loss), np.mean(loss_l), np.mean(loss_b), R#, np.mean(b, axis=-1)
     def reset_states(self):
         self.ram.reset_states()
       #  self.ram.get_layer('rnn').reset_states()

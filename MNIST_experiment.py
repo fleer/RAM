@@ -119,9 +119,10 @@ class Experiment():
 
             zooms = self.mnist.glimpseSensor(X, sample_loc)
             ath = keras.utils.to_categorical(Y, 10)
-            loss_a, loss_l, loss_b, R = self.ram.train(zooms, sample_loc, ath)
+            loss_a, loss_l, loss_b, R = self.ram.train(zooms, sample_loc, ath, mean_locs)
             self.ram.reset_states()
-            print "Action_L: {}, Location_L: [], Baseline_L: {}".format(loss_a, loss_l, loss_b)
+           # if total_steps % 20 == 0:
+           #     print "Action_L: {}, Location_L: {}, Baseline_L: {}".format(loss_a, loss_l, loss_b)
             total_steps += 1
 
             # Check Performance
@@ -129,7 +130,7 @@ class Experiment():
 
                 self.performance_run(total_steps)
 
-            if total_steps % 200 == 0:
+            if total_steps % 500 == 0:
                 logging.info("Total Steps={:d}: >>> steps/second: {:.2f}, average loss: {:.4f}, "
                              "Reward: {:.2f}".format(total_steps,
                              1./(time.time()-start_time), loss_l, np.mean(R)))
