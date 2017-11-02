@@ -46,7 +46,7 @@ class PARAMETERS:
     #   =========================
 
     #   Number of learning steps
-    MAX_STEPS = 600000
+    MAX_STEPS = 400000
     #   Number of times, the current
     #   Policy should be avaluated
     NUM_POLICY_CHECKS = 20

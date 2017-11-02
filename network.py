@@ -64,7 +64,7 @@ class RAM():
         # log_loc = K.sum( location_prob_placeholder - location_mean_placeholder/loc_std**2, axis=-1) * (R_out -baseline)
         R = K.tile(R_out, [1, 2])
         b = K.tile(baseline, [1, 2])
-        log_loc = (location_prob_placeholder - location_mean_placeholder/loc_std**2) * (R -b)
+        log_loc = ((location_prob_placeholder - location_mean_placeholder)/(loc_std*loc_std)) * (R -b)
         loss_loc = -K.mean(log_loc, axis=-1)
 
         loss_b = K.mean(K.square(baseline - R_out), axis=-1)
@@ -89,6 +89,7 @@ class RAM():
         optimizer_b = keras.optimizers.sgd(lr=lr, momentum=mom)
 
         updates_l = optimizer_l.get_updates(params= self.ram.get_layer('location_output').trainable_weights,
+                                                    #self.ram_location.trainable_weights,
                                         #constraints=self.ram.constraints,
                                         loss=loss_loc)
 
@@ -190,6 +191,7 @@ class RAM():
                                          )(model_output)
 
         self.ram_weights = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=action_out)
+        self.ram_location= keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=location_out)
         self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out, baseline_output])
         #self.ram.compile(optimizer=keras.optimizers.adam(lr=0.001),
        # self.ram.compile(optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.9, decay=0.0, nesterov=False),
