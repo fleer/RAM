@@ -64,7 +64,7 @@ class RAM():
         # log_loc = K.sum( location_prob_placeholder - location_mean_placeholder/loc_std**2, axis=-1) * (R_out -baseline)
         R = K.tile(R_out, [1, 2])
         b = K.tile(baseline, [1, 2])
-        log_loc = location_prob_placeholder - location_mean_placeholder/loc_std**2 * (R -b)
+        log_loc = (location_prob_placeholder - location_mean_placeholder/loc_std**2) * (R -b)
         loss_loc = -K.mean(log_loc, axis=-1)
 
         loss_b = K.mean(K.square(baseline - R_out), axis=-1)
