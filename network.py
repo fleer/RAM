@@ -50,7 +50,8 @@ class RAM():
         # Compute Categorial Crossentropy as action loss
         # More precicesly: REINFROCE algorithm for action with baseline
         log_action_prob = (K.log(action_prob_placeholder + 1e-10) * action_onehot_placeholder) * (R_out-baseline)
-        loss_action = - K.mean(log_action_prob, axis=-1) + K.sum(location_prob_placeholder-location_prob_placeholder, axis=-1)
+        loss_action= K.sum(log_action_prob, axis =-1)
+        loss_action = - K.mean(loss_action, axis=0) #+ K.sum(location_prob_placeholder-location_prob_placeholder, axis=-1)
 
 
         # Individual loss for location network
@@ -65,9 +66,11 @@ class RAM():
         R = K.tile(R_out, [1, 2])
         b = K.tile(baseline, [1, 2])
         log_loc = ((location_prob_placeholder - location_mean_placeholder)/(loc_std*loc_std)) * (R -b)
-        loss_loc = -K.mean(log_loc, axis=-1)
+      #  loss_loc = - log_loc
+        loss_loc = K.sum(log_loc, axis =-1)
+        loss_loc = - K.mean(loss_loc, axis=0)
 
-        loss_b = K.mean(K.square(baseline - R_out), axis=-1)
+        loss_b = K.mean(K.mean(K.square(R_out - baseline), axis=1))
 
         # Choose Optimizer:
         if opt == "rmsprop":
@@ -88,8 +91,8 @@ class RAM():
         optimizer_l = keras.optimizers.sgd(lr=lr, momentum=mom)
         optimizer_b = keras.optimizers.sgd(lr=lr, momentum=mom)
 
-        updates_l = optimizer_l.get_updates(params= self.ram.get_layer('location_output').trainable_weights,
-                                                    #self.ram_location.trainable_weights,
+        updates_l = optimizer_l.get_updates(params= #self.ram.get_layer('location_output').trainable_weights,
+                                                    self.ram_location.trainable_weights,
                                         #constraints=self.ram.constraints,
                                         loss=loss_loc)
 
@@ -179,14 +182,17 @@ class RAM():
                                  )(model_output)
         location_out = keras.layers.Dense(2,
                                  activation='tanh',
-                                 kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                 bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                 kernel_initializer=keras.initializers.glorot_uniform(),
+                                # kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                # bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                # bias_initializer=keras.initializers.glorot_uniform(),
                                  name='location_output',
                                  )(model_output)
         baseline_output = keras.layers.Dense(1,
                                  activation='sigmoid',
-                                 kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                 bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                 kernel_initializer=keras.initializers.glorot_uniform(),
+                               #  kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                               #  bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  name='baseline_output',
                                          )(model_output)
 
@@ -217,6 +223,12 @@ class RAM():
         #ath = keras.utils.to_categorical(true_a, self.output_dim)
         #self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
         #                        {'action_output': ath, 'location_output': ath}, epochs=1, batch_size=self.batch_size, verbose=1, shuffle=False)
+       # print "--------------------------------------"
+        print loss
+        print loss_l
+        print loss_b
+
+        #return loss, loss_l, loss_b, R#, np.mean(b, axis=-1)
         return np.mean(loss), np.mean(loss_l), np.mean(loss_b), R#, np.mean(b, axis=-1)
     def reset_states(self):
         self.ram.reset_states()
