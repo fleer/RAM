@@ -50,8 +50,8 @@ class RAM():
         # Compute Categorial Crossentropy as action loss
         # More precicesly: REINFROCE algorithm for action with baseline
         log_action_prob = (K.log(action_prob_placeholder + 1e-10) * action_onehot_placeholder) * (R_out-baseline)
-        loss_action= K.sum(log_action_prob, axis =-1)
-        loss_action = - K.mean(loss_action, axis=0) #+ K.sum(location_prob_placeholder-location_prob_placeholder, axis=-1)
+        loss_action= - K.sum(log_action_prob, axis =-1)
+       # loss_action = - K.mean(loss_action, axis=0) #+ K.sum(location_prob_placeholder-location_prob_placeholder, axis=-1)
 
 
         # Individual loss for location network
@@ -66,11 +66,11 @@ class RAM():
         R = K.tile(R_out, [1, 2])
         b = K.tile(baseline, [1, 2])
         log_loc = ((location_prob_placeholder - location_mean_placeholder)/(loc_std*loc_std)) * (R -b)
-      #  loss_loc = - log_loc
-        loss_loc = K.sum(log_loc, axis =-1)
-        loss_loc = - K.mean(loss_loc, axis=0)
+        loss_loc = - log_loc
+       # loss_loc = - K.sum(log_loc, axis =-1)
+       # loss_loc = - K.mean(loss_loc, axis=0)
 
-        loss_b = K.mean(K.mean(K.square(R_out - baseline), axis=1))
+        loss_b = K.mean(K.square(R_out - baseline), axis=-1)
 
         # Choose Optimizer:
         if opt == "rmsprop":
@@ -84,15 +84,15 @@ class RAM():
         else:
             raise ValueError("Unrecognized update: {}".format(opt))
 
-        updates = optimizer.get_updates(params= self.ram_weights.trainable_weights,
-                                   #constraints=self.ram.constraints,
-                                   loss=loss_action)
+     #   updates = optimizer.get_updates(params= self.ram_weights.trainable_weights,
+     #                              #constraints=self.ram.constraints,
+     #                              loss=loss_action)
 
         optimizer_l = keras.optimizers.sgd(lr=lr, momentum=mom)
         optimizer_b = keras.optimizers.sgd(lr=lr, momentum=mom)
 
-        updates_l = optimizer_l.get_updates(params= #self.ram.get_layer('location_output').trainable_weights,
-                                                    self.ram_location.trainable_weights,
+        updates_l = optimizer_l.get_updates(params= self.ram.get_layer('location_output').trainable_weights,
+                                                    #self.ram_location.trainable_weights,
                                         #constraints=self.ram.constraints,
                                         loss=loss_loc)
 
@@ -100,18 +100,18 @@ class RAM():
                                         #constraints=self.ram.constraints,
                                         loss=loss_b)
 
-        self.train_fn = K.function(inputs=[action_onehot_placeholder,
-                                          self.ram.get_layer("glimpse_input").input,
-                                           self.ram.get_layer("location_input").input
-                                            ],
-                                   outputs=[loss_action, R_out],
-                                   updates=updates)#, updates_l, updates_b])
+     #   self.train_fn = K.function(inputs=[action_onehot_placeholder,
+     #                                     self.ram.get_layer("glimpse_input").input,
+     #                                      self.ram.get_layer("location_input").input
+     #                                       ],
+     #                              outputs=[loss_action, R_out],
+     #                              updates=updates)#, updates_l, updates_b])
         self.train_fn_loc = K.function(inputs=[action_onehot_placeholder,
                                             location_mean_placeholder,
                                            self.ram.get_layer("glimpse_input").input,
                                            self.ram.get_layer("location_input").input
                                            ],
-                                   outputs= [loss_loc],
+                                   outputs= [loss_loc, R_out],
                                    updates= updates_l)
         self.train_fn_b = K.function(inputs=[action_onehot_placeholder,
                                            self.ram.get_layer("glimpse_input").input,
@@ -200,6 +200,8 @@ class RAM():
         self.ram_location= keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=location_out)
         self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out, baseline_output])
         #self.ram.compile(optimizer=keras.optimizers.adam(lr=0.001),
+        self.ram_weights.compile(optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.9, decay=0.0, nesterov=False),
+                                 loss='categorical_crossentropy')
        # self.ram.compile(optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.9, decay=0.0, nesterov=False),
        #                  loss={'action_output': 'categorical_crossentropy',
        #                        'location_output': self.REINFORCE_loss(action_p=action_out)})
@@ -217,16 +219,17 @@ class RAM():
       #  loc_input = np.reshape(loc, (self.batch_size, 2))
 
         l_mean = np.mean(loc_mean, axis=-2)
-        loss, R = self.train_fn([true_a, glimpse_input, loc_input])
-        loss_l = self.train_fn_loc([true_a, l_mean, glimpse_input, loc_input])
+       # loss, R = self.train_fn([true_a, glimpse_input, loc_input])
+        loss = self.ram_weights.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input}, true_a)
+        loss_l,R = self.train_fn_loc([true_a, l_mean, glimpse_input, loc_input])
         loss_b, b = self.train_fn_b([true_a, glimpse_input, loc_input])
         #ath = keras.utils.to_categorical(true_a, self.output_dim)
         #self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
         #                        {'action_output': ath, 'location_output': ath}, epochs=1, batch_size=self.batch_size, verbose=1, shuffle=False)
        # print "--------------------------------------"
-        print loss
-        print loss_l
-        print loss_b
+       # print loss
+       # print loss_l
+       # print loss_b
 
         #return loss, loss_l, loss_b, R#, np.mean(b, axis=-1)
         return np.mean(loss), np.mean(loss_l), np.mean(loss_b), R#, np.mean(b, axis=-1)
