@@ -62,7 +62,7 @@ class PARAMETERS:
     #   adam
     #   adadelta
     #   sgd
-    OPTIMIZER = 'sgd'
+    OPTIMIZER = 'adam'
     # Learning rate alpha
     LEARNING_RATE = 0.001
     # Momentum

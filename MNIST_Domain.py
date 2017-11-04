@@ -155,7 +155,7 @@ class MNIST():
 
 
 def main():
-    mnist = MNIST()
+    mnist = MNIST(28,2,1,4,6,1,0.11)
     mnist_size = mnist.mnist_size
     batch_size = mnist.batch_size
     channels = 1 # grayscale

@@ -77,19 +77,24 @@ class RAM():
             optimizer = keras.optimizers.rmsprop(lr=lr)
         elif opt== "adam":
             optimizer = keras.optimizers.adam(lr=lr)
+            optimizer_l = keras.optimizers.adam(lr=lr)
+            optimizer_b = keras.optimizers.adam(lr=lr)
         elif opt== "adadelta":
             optimizer = keras.optimizers.adadelta(lr=lr)
         elif opt== 'sgd':
             optimizer = keras.optimizers.sgd(lr=lr, momentum=mom)
+            optimizer_l = keras.optimizers.sgd(lr=lr, momentum=mom)
+            optimizer_b = keras.optimizers.sgd(lr=lr, momentum=mom)
         else:
             raise ValueError("Unrecognized update: {}".format(opt))
+
+        self.ram_weights.compile(optimizer=optimizer,
+                                 loss='categorical_crossentropy')
 
      #   updates = optimizer.get_updates(params= self.ram_weights.trainable_weights,
      #                              #constraints=self.ram.constraints,
      #                              loss=loss_action)
 
-        optimizer_l = keras.optimizers.sgd(lr=lr, momentum=mom)
-        optimizer_b = keras.optimizers.sgd(lr=lr, momentum=mom)
 
         updates_l = optimizer_l.get_updates(params= self.ram.get_layer('location_output').trainable_weights,
                                                     #self.ram_location.trainable_weights,
@@ -119,6 +124,7 @@ class RAM():
                                            ],
                                    outputs= [loss_b, baseline],
                                    updates= updates_b)
+
 
 
     def big_net(self):
@@ -200,8 +206,6 @@ class RAM():
         self.ram_location= keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=location_out)
         self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out, baseline_output])
         #self.ram.compile(optimizer=keras.optimizers.adam(lr=0.001),
-        self.ram_weights.compile(optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.9, decay=0.0, nesterov=False),
-                                 loss='categorical_crossentropy')
        # self.ram.compile(optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.9, decay=0.0, nesterov=False),
        #                  loss={'action_output': 'categorical_crossentropy',
        #                        'location_output': self.REINFORCE_loss(action_p=action_out)})
