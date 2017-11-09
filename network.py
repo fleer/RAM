@@ -61,7 +61,7 @@ class RAM():
         # -------------- = -------- with m = mean, x = sample, s = standard_deviation
         #       d m          s**2
 
-        sample_loc = np.tanh(K.random_normal(location_prob_placeholder.shape, location_prob_placeholder, loc_std))
+        sample_loc = K.tanh(K.random_normal(location_prob_placeholder.shape, location_prob_placeholder, loc_std))
         #TODO: Check how to deal with the 2 dims (x,y) of location
         # log_loc = K.sum( location_prob_placeholder - location_mean_placeholder/loc_std**2, axis=-1) * (R_out -baseline)
         R = K.tile(R_out, [1, 2])
@@ -223,7 +223,7 @@ class RAM():
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
       #  loc_input = np.reshape(loc, (self.batch_size, 2))
 
-        l_mean = np.mean(loc_mean, axis=-2)
+        #l_mean = np.mean(loc_mean, axis=-2)
        # loss, R = self.train_fn([true_a, glimpse_input, loc_input])
         old_weights = self.rnn.get_weights()
         loss = self.ram_weights.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input}, true_a)
