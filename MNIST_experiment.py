@@ -56,25 +56,11 @@ class Experiment():
         for i in xrange(batches_in_epoch):
             X, Y = self.mnist.dataset.test.next_batch(self.batch_size)
             loc = np.random.uniform(-1, 1,(self.batch_size, 2))
-            sample_loc = np.tanh(loc + np.random.normal(0, self.loc_std, loc.shape))
-         #   mean_locs = np.zeros((self.batch_size, self.nGlimpses, 2))
-         #   sample_locs = np.zeros((self.batch_size, self.nGlimpses, 2))
-         #   for i in range(self.batch_size):
-         #       mean_locs[i][0][0] = loc[i][0]
-         #       mean_locs[i][0][1] = loc[i][1]
-         #       sample_locs[i][0][0] = sample_loc[i][0]
-         #       sample_locs[i][0][1] = sample_loc[i][1]
+            sample_loc = np.tanh(np.random.normal(loc, self.loc_std, loc.shape))
             for n in range(self.nGlimpses):
                 zooms = self.mnist.glimpseSensor(X,sample_loc)
                 a_prob, loc = self.ram.choose_action(zooms, sample_loc)
-                mean_loc = loc
-                #mean_loc = np.fmax(-1.0, np.fmin(1.0, loc + sample_locs[:,-1]))
-                sample_loc = np.fmax(-1.0, np.fmin(1.0, mean_loc + np.random.normal(0, self.loc_std, loc.shape)))
-               # for i in range(self.batch_size):
-               #     mean_locs[i][n][0] = mean_loc[i][0]
-               #     mean_locs[i][n][1] = mean_loc[i][1]
-               #     sample_locs[i][n][0] = sample_loc[i][0]
-               #     sample_locs[i][n][1] = sample_loc[i][1]
+                sample_loc = np.tanh(np.random.normal(loc, self.loc_std, loc.shape))
             action = np.argmax(a_prob, axis=-1)
             actions += np.mean(np.equal(action,Y).astype(np.float32))
             self.ram.reset_states()
@@ -95,31 +81,15 @@ class Experiment():
 
             X, Y= self.mnist.get_batch(self.batch_size)
             baseline = np.zeros((self.batch_size, self.nGlimpses, 2))
-            mean_locs = np.zeros((self.batch_size, self.nGlimpses, 2))
-          #  sample_locs = np.zeros((self.batch_size, self.nGlimpses, 2))
             loc = np.random.uniform(-1, 1, (self.batch_size, 2))
-            sample_loc = np.tanh(loc + np.random.normal(0, self.loc_std, loc.shape))
-            for i in range(self.batch_size):
-                mean_locs[i][0][0] = sample_loc[i][0]
-                mean_locs[i][0][1] = sample_loc[i][1]
-           #     sample_locs[i][0][0] = sample_loc[i][0]
-           #     sample_locs[i][0][1] = sample_loc[i][1]
-
+            sample_loc = np.tanh(np.random.normal(loc, self.loc_std, loc.shape))
             for n in range(1, self.nGlimpses):
                 zooms = self.mnist.glimpseSensor(X, sample_loc)
                 a_prob, loc = self.ram.choose_action(zooms, sample_loc)
-                #mean_loc = np.fmax(-1.0, np.fmin(1.0, loc + sample_locs[:,-1]))
-                mean_loc = loc
-                sample_loc = np.fmax(-1.0, np.fmin(1.0, mean_loc + np.random.normal(0, self.loc_std, loc.shape)))
-                for i in range(self.batch_size):
-                        mean_locs[i][n][0] = mean_loc[i][0]
-                        mean_locs[i][n][1] = mean_loc[i][1]
-                #        sample_locs[i][n][0] = sample_loc[i][0]
-                #        sample_locs[i][n][1] = sample_loc[i][1]
-
+                sample_loc = np.tanh(np.random.normal(loc, self.loc_std, loc.shape))
             zooms = self.mnist.glimpseSensor(X, sample_loc)
             ath = keras.utils.to_categorical(Y, 10)
-            loss_a, loss_l, loss_b, R = self.ram.train(zooms, sample_loc, ath, mean_locs)
+            loss_a, loss_l, loss_b, R = self.ram.train(zooms, sample_loc, ath)
             self.ram.reset_states()
            # if total_steps % 20 == 0:
            #     print "Action_L: {}, Location_L: {}, Baseline_L: {}".format(loss_a, loss_l, loss_b)

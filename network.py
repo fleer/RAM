@@ -33,8 +33,8 @@ class RAM():
         action_prob_placeholder = self.ram.get_layer("action_output").output
         action_onehot_placeholder = K.placeholder(shape=(None, self.output_dim),
                                                   name="action_onehot")
-        location_mean_placeholder = K.placeholder(shape=(None, 2),
-                                                  name="location_mean")
+     #   location_mean_placeholder = K.placeholder(shape=(None, 2),
+     #                                             name="location_mean")
         location_prob_placeholder = self.ram.get_layer("location_output").output
         baseline = self.ram.get_layer("baseline_output").output
 
@@ -61,11 +61,12 @@ class RAM():
         # -------------- = -------- with m = mean, x = sample, s = standard_deviation
         #       d m          s**2
 
+        sample_loc = np.tanh(K.random.normal(location_prob_placeholder, self.loc_std, location_prob_placeholder.shape))
         #TODO: Check how to deal with the 2 dims (x,y) of location
         # log_loc = K.sum( location_prob_placeholder - location_mean_placeholder/loc_std**2, axis=-1) * (R_out -baseline)
         R = K.tile(R_out, [1, 2])
         b = K.tile(baseline, [1, 2])
-        log_loc = ((location_prob_placeholder - location_mean_placeholder)/(loc_std*loc_std)) * (R -b)
+        log_loc = ((sample_loc - location_prob_placeholder)/(loc_std*loc_std)) * (R -b)
         loss_loc = - log_loc
        # loss_loc = - K.sum(log_loc, axis =-1)
        # loss_loc = - K.mean(loss_loc, axis=0)
@@ -112,7 +113,6 @@ class RAM():
      #                              outputs=[loss_action, R_out],
      #                              updates=updates)#, updates_l, updates_b])
         self.train_fn_loc = K.function(inputs=[action_onehot_placeholder,
-                                            location_mean_placeholder,
                                            self.ram.get_layer("glimpse_input").input,
                                            self.ram.get_layer("location_input").input
                                            ],
@@ -211,7 +211,7 @@ class RAM():
        #                  loss={'action_output': 'categorical_crossentropy',
        #                        'location_output': self.REINFORCE_loss(action_p=action_out)})
 
-    def train(self, zooms, loc_input, true_a, loc_mean):
+    def train(self, zooms, loc_input, true_a):
         #b = np.stack(b)
       #  b = np.concatenate([b, b], axis=2)
       #  print b
@@ -229,7 +229,7 @@ class RAM():
         loss = self.ram_weights.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input}, true_a)
         new_weights = self.rnn.get_weights()
         self.rnn.set_weights(old_weights)
-        loss_l,R = self.train_fn_loc([true_a, l_mean, glimpse_input, loc_input])
+        loss_l,R = self.train_fn_loc([true_a, glimpse_input, loc_input])
         loss_b, b = self.train_fn_b([true_a, glimpse_input, loc_input])
         self.rnn.set_weights(new_weights)
         #ath = keras.utils.to_categorical(true_a, self.output_dim)
