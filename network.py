@@ -61,7 +61,7 @@ class RAM():
         # -------------- = -------- with m = mean, x = sample, s = standard_deviation
         #       d m          s**2
 
-        sample_loc = np.tanh(K.random.normal(location_prob_placeholder, self.loc_std, location_prob_placeholder.shape))
+        sample_loc = np.tanh(K.random_normal(location_prob_placeholder.shape, location_prob_placeholder, loc_std))
         #TODO: Check how to deal with the 2 dims (x,y) of location
         # log_loc = K.sum( location_prob_placeholder - location_mean_placeholder/loc_std**2, axis=-1) * (R_out -baseline)
         R = K.tile(R_out, [1, 2])
