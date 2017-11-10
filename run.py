@@ -46,7 +46,7 @@ class PARAMETERS:
     #   =========================
 
     #   Number of learning steps
-    MAX_STEPS = 400000
+    MAX_STEPS = 500000
     #   Number of times, the current
     #   Policy should be avaluated
     NUM_POLICY_CHECKS = 20
@@ -62,13 +62,19 @@ class PARAMETERS:
     #   adam
     #   adadelta
     #   sgd
-    OPTIMIZER = 'adam'
+    OPTIMIZER = 'sgd'
     # Learning rate alpha
-    LEARNING_RATE = 0.001
+    LEARNING_RATE = 0.01
+    # Learning rate decay
+    LEARNING_RATE_DECAY = 1e-4
     # Momentum
     MOMENTUM = 0.9
     #Discount factor gamma
     DISCOUNT = 0.95
+    # Clipnorm
+    CLIPNORM = -1
+    # Clipvalue
+    CLIPVALUE = -1
 
 def main():
     params = PARAMETERS

@@ -7,7 +7,7 @@ import numpy as np
 class RAM():
 
     glimpses = 6
-    def __init__(self, totalSensorBandwidth, batch_size, glimpses, optimizer, lr, momentum, discount, loc_std):
+    def __init__(self, totalSensorBandwidth, batch_size, glimpses, optimizer, lr, lr_d, momentum, discount, loc_std, clipnorm, clipvalue):
 
         # TODO --> Integrate Discount Factor for Reward
         self.discounted_r = np.zeros((batch_size, 1))
@@ -16,10 +16,10 @@ class RAM():
         self.batch_size = batch_size
         self.glimpses = glimpses
         self.big_net()
-        self.__build_train_fn(optimizer, lr, momentum, loc_std)
+        self.__build_train_fn(optimizer, lr, lr_d, momentum, loc_std, clipnorm, clipvalue)
 
 
-    def __build_train_fn(self, opt, lr, mom, loc_std):
+    def __build_train_fn(self, opt, lr, lr_d, mom, loc_std, clipnorm, clipvalue):
         """Create a train function
         It replaces `model.fit(X, y)` because we use the output of model and use it for training.
         For example, we need action placeholder
@@ -77,15 +77,15 @@ class RAM():
         if opt == "rmsprop":
             optimizer = keras.optimizers.rmsprop(lr=lr)
         elif opt== "adam":
-            optimizer = keras.optimizers.adam(lr=lr)
-            optimizer_l = keras.optimizers.adam(lr=lr)
-            optimizer_b = keras.optimizers.adam(lr=lr)
+            optimizer = keras.optimizers.adam(lr=lr, decay=lr_d, clipnorm=clipnorm, clipvalue=clipvalue)
+            optimizer_l = keras.optimizers.adam(lr=lr, decay=lr_d, clipnorm=clipnorm, clipvalue=clipvalue)
+            optimizer_b = keras.optimizers.adam(lr=lr, decay=lr_d, clipnorm=clipnorm, clipvalue=clipvalue)
         elif opt== "adadelta":
             optimizer = keras.optimizers.adadelta(lr=lr)
         elif opt== 'sgd':
-            optimizer = keras.optimizers.sgd(lr=lr, momentum=mom)
-            optimizer_l = keras.optimizers.sgd(lr=lr, momentum=mom)
-            optimizer_b = keras.optimizers.sgd(lr=lr, momentum=mom)
+            optimizer = keras.optimizers.sgd(lr=lr, decay=lr_d, momentum=mom, clipnorm=clipnorm, clipvalue=clipvalue)
+            optimizer_l = keras.optimizers.sgd(lr=lr, decay=lr_d, momentum=mom, clipnorm=clipnorm, clipvalue=clipvalue)
+            optimizer_b = keras.optimizers.sgd(lr=lr, decay=lr_d, momentum=mom, clipnorm=clipnorm, clipvalue=clipvalue)
         else:
             raise ValueError("Unrecognized update: {}".format(opt))
 
@@ -196,9 +196,9 @@ class RAM():
                                  )(model_output)
         baseline_output = keras.layers.Dense(1,
                                  activation='sigmoid',
-                                 kernel_initializer=keras.initializers.glorot_uniform(),
-                               #  kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                               #  bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                               #  kernel_initializer=keras.initializers.glorot_uniform(),
+                                 kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                 bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  name='baseline_output',
                                          )(model_output)
 

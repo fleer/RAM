@@ -42,8 +42,11 @@ class Experiment():
         totalSensorBandwidth = self.nZooms * sensorResolution * sensorResolution * channels
         self.mnist = MNIST(mnist_size, self.batch_size, channels, minRadius, sensorResolution, self.nZooms, self.loc_std)
         self.ram = RAM(totalSensorBandwidth, self.batch_size, self.nGlimpses,
-                       PARAMETERS.OPTIMIZER, PARAMETERS.LEARNING_RATE,
-                       PARAMETERS.MOMENTUM, PARAMETERS.DISCOUNT, DOMAIN_OPTIONS.LOC_STD)
+                       PARAMETERS.OPTIMIZER, PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY,
+                       PARAMETERS.MOMENTUM, PARAMETERS.DISCOUNT, DOMAIN_OPTIONS.LOC_STD, PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE)
+        # What happens to learning rate
+        self.lr = PARAMETERS.LEARNING_RATE
+        self.lr_decay = PARAMETERS.LEARNING_RATE_DECAY
 
         self.train()
         self.save('./', results_file)
@@ -101,12 +104,15 @@ class Experiment():
                 self.performance_run(total_steps)
 
             if total_steps % 100 == 0:
+                lr = self.lr
+                if self.lr_decay > 0:
+                    lr *= 1. / (1. + self.lr_decay * total_steps)
                 #logging.info("Total Steps={:d}: >>> steps/second: {:.2f}, average loss: {:.4f}, "
                 #             "Reward: {:.2f}".format(total_steps,
                 #             1./(time.time()-start_time), loss_l, np.mean(R)))
                 logging.info("Total Steps={:d}: >>> steps/second: {:.2f}, Action_L: {:.4f}, Location_L: {:.4f}, Baseline_L: {:.4f}, "
-                             "Reward: {:.2f}".format(total_steps,
-                                                     1./(time.time()-start_time),loss_a, loss_l, loss_b, np.mean(R)))
+                             "Learning Rate: {:.6f}, Reward: {:.2f}".format(total_steps,
+                                                     1./(time.time()-start_time),loss_a, loss_l, loss_b, lr, np.mean(R)))
 
     def save(self, path, filename):
         """Saves the experimental results to ``results.json`` file
