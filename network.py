@@ -225,13 +225,15 @@ class RAM():
 
         #l_mean = np.mean(loc_mean, axis=-2)
        # loss, R = self.train_fn([true_a, glimpse_input, loc_input])
-        old_weights = self.rnn.get_weights()
+        #old_weights = self.rnn.get_weights()
         loss = self.ram_weights.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input}, true_a)
-        new_weights = self.rnn.get_weights()
-        self.rnn.set_weights(old_weights)
+        #new_weights = self.rnn.get_weights()
+        #self.rnn.set_weights(old_weights)
+        self.rnn.trainable = False
         loss_l,R = self.train_fn_loc([true_a, glimpse_input, loc_input])
         loss_b, b = self.train_fn_b([true_a, glimpse_input, loc_input])
-        self.rnn.set_weights(new_weights)
+        self.rnn.trainable = True
+        #self.rnn.set_weights(new_weights)
         #ath = keras.utils.to_categorical(true_a, self.output_dim)
         #self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
         #                        {'action_output': ath, 'location_output': ath}, epochs=1, batch_size=self.batch_size, verbose=1, shuffle=False)
