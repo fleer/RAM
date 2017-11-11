@@ -40,7 +40,8 @@ class Experiment():
         self.num_policy_checks = PARAMETERS.NUM_POLICY_CHECKS
 
         totalSensorBandwidth = self.nZooms * sensorResolution * sensorResolution * channels
-        self.mnist = MNIST(mnist_size, self.batch_size, channels, minRadius, sensorResolution, self.nZooms, self.loc_std)
+        self.mnist = MNIST(mnist_size, self.batch_size, channels, minRadius, sensorResolution,
+                           self.nZooms, self.loc_std, DOMAIN_OPTIONS.UNIT_PIXELS)
         self.ram = RAM(totalSensorBandwidth, self.batch_size, self.nGlimpses,
                        PARAMETERS.OPTIMIZER, PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY,
                        PARAMETERS.MOMENTUM, PARAMETERS.DISCOUNT, DOMAIN_OPTIONS.LOC_STD, PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE)

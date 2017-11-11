@@ -5,7 +5,7 @@ import cv2
 
 class MNIST():
 
-    def __init__(self, mnist_size, batch_size, channels, minRadius, sensorBandwidth,depth, loc_std):
+    def __init__(self, mnist_size, batch_size, channels, minRadius, sensorBandwidth,depth, loc_std, unit_pixels):
 
         self.mnist_size = mnist_size
         self.batch_size = batch_size
@@ -14,6 +14,7 @@ class MNIST():
         self.sensorBandwidth = sensorBandwidth # fixed resolution of sensor
         self.sensorArea = self.sensorBandwidth**2
         self.depth = depth # zooms
+        self.unit_pixels = unit_pixels
         self.dataset = tf_mnist_loader.read_data_sets("mnist_data")
 
         self.loc_std = loc_std # std when setting the location
@@ -33,7 +34,9 @@ class MNIST():
         assert not np.any(np.isnan(normLoc))," Locations have to be between 1, -1: {}".format(normLoc)
         assert np.any(np.abs(normLoc)<=1)," Locations have to be between 1, -1: {}".format(normLoc)
 
-        loc = ((normLoc + 1) / 2) * self.mnist_size # normLoc coordinates are between -1 and 1
+        #loc *= 26*2/28
+        #loc = ((normLoc + 1) / 2) * self.mnist_size # normLoc coordinates are between -1 and 1
+        loc = normLoc * ((self.unit_pixels * 2.) / self.mnist_size) # normLoc coordinates are between -1 and 1
         loc = loc.astype(np.int32)
 
         img = np.reshape(img, (self.batch_size, self.mnist_size, self.mnist_size, self.channels))

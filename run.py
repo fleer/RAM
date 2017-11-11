@@ -33,6 +33,8 @@ class MNIST_DOMAIN_OPTIONS:
     NGLIMPSES = 6
     # Standard Deviation of the Location Policy
     LOC_STD = 0.11
+    #
+    UNIT_PIXELS = 13
 
 class PARAMETERS:
     """
@@ -72,9 +74,9 @@ class PARAMETERS:
     #Discount factor gamma
     DISCOUNT = 0.95
     # Clipnorm
-    CLIPNORM = -1
+    CLIPNORM = 0
     # Clipvalue
-    CLIPVALUE = -1
+    CLIPVALUE = 0
 
 def main():
     params = PARAMETERS
