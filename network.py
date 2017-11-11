@@ -61,7 +61,7 @@ class RAM():
         # -------------- = -------- with m = mean, x = sample, s = standard_deviation
         #       d m          s**2
 
-        sample_loc = K.tanh(K.random_normal(location_prob_placeholder.shape, location_prob_placeholder, loc_std))
+        sample_loc = K.random_normal(location_prob_placeholder.shape, location_prob_placeholder, loc_std)
         #TODO: Check how to deal with the 2 dims (x,y) of location
         # log_loc = K.sum( location_prob_placeholder - location_mean_placeholder/loc_std**2, axis=-1) * (R_out -baseline)
         R = K.tile(R_out, [1, 2])
@@ -226,13 +226,13 @@ class RAM():
         #l_mean = np.mean(loc_mean, axis=-2)
        # loss, R = self.train_fn([true_a, glimpse_input, loc_input])
         #old_weights = self.rnn.get_weights()
-        loss = self.ram_weights.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input}, true_a)
         #new_weights = self.rnn.get_weights()
         #self.rnn.set_weights(old_weights)
         self.rnn.trainable = False
         loss_l,R = self.train_fn_loc([true_a, glimpse_input, loc_input])
         loss_b, b = self.train_fn_b([true_a, glimpse_input, loc_input])
         self.rnn.trainable = True
+        loss = self.ram_weights.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input}, true_a)
         #self.rnn.set_weights(new_weights)
         #ath = keras.utils.to_categorical(true_a, self.output_dim)
         #self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
@@ -244,6 +244,7 @@ class RAM():
 
         #return loss, loss_l, loss_b, R#, np.mean(b, axis=-1)
         return np.mean(loss), np.mean(loss_l), np.mean(loss_b), R#, np.mean(b, axis=-1)
+
     def reset_states(self):
         self.ram.reset_states()
       #  self.ram.get_layer('rnn').reset_states()
