@@ -78,7 +78,7 @@ class Experiment():
         total_steps = 0
 
         # Initial Performance Check
-  #      self.performance_run(total_steps)
+        self.performance_run(total_steps)
 
         for i in range(self.max_steps):
             start_time = time.time()

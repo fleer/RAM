@@ -26,7 +26,7 @@ class MNIST_DOMAIN_OPTIONS:
     # Resolution of the Sensor
     SENSOR = 8
     # Number of zooms
-    NZOOMS = 3
+    NZOOMS = 1
     # Minimal zoom size # zooms -> minRadius * 2**<depth_level>
     MIN_ZOOM = 4
     # Number of Glimpses
@@ -68,7 +68,7 @@ class PARAMETERS:
     # Learning rate alpha
     LEARNING_RATE = 0.01
     # Learning rate decay
-    LEARNING_RATE_DECAY = 1e-4
+    LEARNING_RATE_DECAY = 1e-5
     # Momentum
     MOMENTUM = 0.9
     #Discount factor gamma
@@ -81,7 +81,7 @@ class PARAMETERS:
 def main():
     params = PARAMETERS
     dom_opt = MNIST_DOMAIN_OPTIONS
-    for i in range(1, 11):
+    for i in range(1, 4):
         exp = Experiment(params, dom_opt, "./{0:03}".format(i) + "-results.json")
         del exp
 
