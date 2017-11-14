@@ -27,13 +27,18 @@ class MNIST_DOMAIN_OPTIONS:
     SENSOR = 8
     # Number of zooms
     NZOOMS = 1
-    # Minimal zoom size # zooms -> minRadius * 2**<depth_level>
-    MIN_ZOOM = 4
+    # Minimal zoom size # zooms -> mnist_size * (min_zoom **<depth_level>)
+    MIN_ZOOM = 2
     # Number of Glimpses
-    NGLIMPSES = 6
+    NGLIMPSES = 7
     # Standard Deviation of the Location Policy
     LOC_STD = 0.11
-    #
+    # This variable basically outlines how far (in pixels) near the borders
+    # the center of each glimpse can reach with respect to the center.
+    # So a value of 13 (the default) means that the center of the glimpse
+    # can be anywhere between the 2rd and 27th pixel (for a 1x28x28 MNIST example).
+    # So glimpses of the corner will have fewer zero-padding values
+    # then if UNIT_PIXELS = 14
     UNIT_PIXELS = 13
 
 class PARAMETERS:
@@ -48,12 +53,12 @@ class PARAMETERS:
     #   =========================
 
     #   Number of learning steps
-    MAX_STEPS = 500000
+    MAX_STEPS = 20000
     #   Number of times, the current
     #   Policy should be avaluated
-    NUM_POLICY_CHECKS = 20
+    NUM_POLICY_CHECKS = 10
     #   Batch size
-    BATCH_SIZE = 32
+    BATCH_SIZE = 20
 
     #   =========================
     #   Algorithm specific parameters
@@ -68,20 +73,20 @@ class PARAMETERS:
     # Learning rate alpha
     LEARNING_RATE = 0.01
     # Learning rate decay
-    LEARNING_RATE_DECAY = 1e-5
+    LEARNING_RATE_DECAY = 1e-3
     # Momentum
     MOMENTUM = 0.9
     #Discount factor gamma
     DISCOUNT = 0.95
     # Clipnorm
-    CLIPNORM = 0
+    CLIPNORM = 0 #-1
     # Clipvalue
-    CLIPVALUE = 0
+    CLIPVALUE = 0 #-1
 
 def main():
     params = PARAMETERS
     dom_opt = MNIST_DOMAIN_OPTIONS
-    for i in range(1, 4):
+    for i in range(1, 10):
         exp = Experiment(params, dom_opt, "./{0:03}".format(i) + "-results.json")
         del exp
 

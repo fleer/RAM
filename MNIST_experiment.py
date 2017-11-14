@@ -104,7 +104,7 @@ class Experiment():
 
                 self.performance_run(total_steps)
 
-            if total_steps % 100 == 0:
+            elif total_steps % 500 == 0:
                 lr = self.lr
                 if self.lr_decay > 0:
                     lr *= 1. / (1. + self.lr_decay * total_steps)
@@ -124,6 +124,9 @@ class Experiment():
         with open(results_fn, "w") as f:
             json.dump(self.results, f, indent=4, sort_keys=True)
         f.close()
+
+    def __del__(self):
+        self.results.clear()
 
 def main():
     for i in range(11):

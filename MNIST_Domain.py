@@ -19,13 +19,6 @@ class MNIST():
 
         self.loc_std = loc_std # std when setting the location
 
-
-    # to use for maximum likelihood with glimpse location
-    def gaussian_pdf(self, mean, sample):
-        Z = 1.0 / (self.loc_std * np.sqrt(2.0 * np.math.pi))
-        a = -np.square(np.asarray(sample) - np.asarray(mean)) / (2.0 * np.square(self.loc_std))
-        return Z * np.exp(a)
-
     def get_batch(self, batch_size):
         X, Y = self.dataset.test.next_batch(batch_size)
         return X,Y
@@ -34,9 +27,12 @@ class MNIST():
         assert not np.any(np.isnan(normLoc))," Locations have to be between 1, -1: {}".format(normLoc)
         assert np.any(np.abs(normLoc)<=1)," Locations have to be between 1, -1: {}".format(normLoc)
 
-        #loc *= 26*2/28
-        #loc = ((normLoc + 1) / 2) * self.mnist_size # normLoc coordinates are between -1 and 1
-        loc = normLoc * ((self.unit_pixels * 2.) / self.mnist_size) # normLoc coordinates are between -1 and 1
+        #loc = np.around(((normLoc + 1) / 2.0) * self.mnist_size) # normLoc coordinates are between -1 and 1
+        loc = normLoc * (self.unit_pixels * 2.)/ self.mnist_size # normLoc coordinates are between -1 and 1
+        # Convert location [-1,1] into MNIST Coordinates:
+        loc = np.around(((loc + 1) / 2.0) * self.mnist_size) # normLoc coordinates are between -1 and 1
+        #print "Default: {}".format(loc)
+        #print "unit Pixels: {}".format(loc1)
         loc = loc.astype(np.int32)
 
         img = np.reshape(img, (self.batch_size, self.mnist_size, self.mnist_size, self.channels))
@@ -47,7 +43,7 @@ class MNIST():
         for k in xrange(self.batch_size):
             imgZooms = []
             one_img = img[k,:,:,:]
-            max_radius = self.minRadius * (2 ** (self.depth - 1))
+            max_radius = self.mnist_size * (self.minRadius ** (self.depth - 1))
             offset = 2 * max_radius
 
             # pad image with zeros
@@ -55,7 +51,7 @@ class MNIST():
                 max_radius * 4 + self.mnist_size, max_radius * 4 + self.mnist_size)
 
             for i in xrange(self.depth):
-                r = int(self.minRadius * (2 ** (i - 1)))
+                r = int(self.mnist_size * (self.minRadius ** (i - 1)))
 
                 d_raw = 2 * r
                 d = np.reshape(np.asarray(d_raw), [1])
@@ -78,7 +74,7 @@ class MNIST():
 
                 # resize cropped image to (sensorBandwidth x sensorBandwidth)
                 zoom = cv2.resize(zoom, (self.sensorBandwidth, self.sensorBandwidth),
-                      interpolation=cv2.INTER_LINEAR)
+                      interpolation=cv2.INTER_AREA)#INTER_LINEAR)
                 zoom = np.reshape(zoom, (self.sensorBandwidth, self.sensorBandwidth))
                 imgZooms.append(zoom)
 
@@ -158,7 +154,7 @@ class MNIST():
 
 
 def main():
-    mnist = MNIST(28,2,1,4,6,1,0.11)
+    mnist = MNIST(28,4,1,2,6,1,0.11, 13)
     mnist_size = mnist.mnist_size
     batch_size = mnist.batch_size
     channels = 1 # grayscale
@@ -167,6 +163,8 @@ def main():
     sensorBandwidth = 8 # fixed resolution of sensor
     sensorArea = sensorBandwidth**2
     depth = 1 # zooms
+
+    glimpses = 4
     X, Y= mnist.get_batch(batch_size)
     #mnist.glimpseSensor(X, )
 
@@ -176,14 +174,16 @@ def main():
     plt.ion()
     plt.show()
 
-    initial_loc = np.random.uniform(-1, 1,(batch_size, 2))
+    #initial_loc = np.random.uniform(-1, 1,(batch_size, 2))
 
-    zooms = mnist.glimpseSensor(X, initial_loc)
+#    zooms = mnist.glimpseSensor(X, initial_loc)
+    zooms = [mnist.glimpseSensor(X, np.random.uniform(-1, 1,(batch_size, 2))) for x in range(glimpses)]
 
     for k in xrange(batch_size):
         one_img = img[k,:,:,:]
-        max_radius = minRadius * (2 ** (depth - 1))
+        max_radius = mnist_size * (minRadius ** (depth - 1))
         offset = max_radius
+
         one_img = mnist.pad_to_bounding_box(one_img, offset, offset,
                                             max_radius * 2 + mnist_size, max_radius * 2 + mnist_size)
 
@@ -195,13 +195,15 @@ def main():
         #time.sleep(0.05)
         plt.pause(1.0001)
 
-        for z in zooms[k]:
-            plt.imshow(z[:,:], cmap=plt.get_cmap('gray'),
-                   interpolation="nearest")
+        for g in zooms:
+            #for z in zooms[k]:
+            for z in g[k]:
+                plt.imshow(z[:,:], cmap=plt.get_cmap('gray'),
+                       interpolation="nearest")
 
-            plt.draw()
-            #time.sleep(0.05)
-            plt.pause(1.0001)
+                plt.draw()
+                #time.sleep(0.05)
+                plt.pause(1.0001)
 
 if __name__ == '__main__':
     main()

@@ -62,6 +62,7 @@ class RAM():
         #       d m          s**2
 
         sample_loc = K.random_normal(location_prob_placeholder.shape, location_prob_placeholder, loc_std)
+        #sample_loc = K.tanh(sample_loc)
         #TODO: Check how to deal with the 2 dims (x,y) of location
         # log_loc = K.sum( location_prob_placeholder - location_mean_placeholder/loc_std**2, axis=-1) * (R_out -baseline)
         R = K.tile(R_out, [1, 2])
@@ -188,9 +189,9 @@ class RAM():
                                  )(model_output)
         location_out = keras.layers.Dense(2,
                                  activation='tanh',
-                                 kernel_initializer=keras.initializers.glorot_uniform(),
-                                # kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                # bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                 #kernel_initializer=keras.initializers.glorot_uniform(),
+                                 kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                 bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                 # bias_initializer=keras.initializers.glorot_uniform(),
                                  name='location_output',
                                  )(model_output)
@@ -229,10 +230,10 @@ class RAM():
         #new_weights = self.rnn.get_weights()
         #self.rnn.set_weights(old_weights)
         #self.rnn.trainable = False
-        loss = self.ram_weights.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input}, true_a)
         loss_b, b = self.train_fn_b([true_a, glimpse_input, loc_input])
         #self.rnn.trainable = True
         loss_l,R = self.train_fn_loc([true_a, glimpse_input, loc_input])
+        loss = self.ram_weights.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input}, true_a)
         #self.rnn.set_weights(new_weights)
         #ath = keras.utils.to_categorical(true_a, self.output_dim)
         #self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
