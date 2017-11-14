@@ -76,7 +76,8 @@ class Experiment():
         total_steps = 0
 
         # Initial Performance Check
-        self.performance_run(total_steps)
+        #self.performance_run(total_steps)
+
 
         for i in range(self.max_steps):
             start_time = time.time()
@@ -91,7 +92,8 @@ class Experiment():
                 sample_loc = np.tanh(np.random.normal(loc, self.loc_std, loc.shape))
             zooms = self.mnist.glimpseSensor(X, sample_loc)
             ath = keras.utils.to_categorical(Y, 10)
-            loss_a, loss_l, loss_b, R, lr = self.ram.train(zooms, sample_loc, ath)
+            loss, lr = self.ram.train(zooms, sample_loc, ath)
+            action = np.argmax(a_prob, axis=-1)
             self.ram.reset_states()
            # if total_steps % 20 == 0:
            #     print "Action_L: {}, Location_L: {}, Baseline_L: {}".format(loss_a, loss_l, loss_b)
@@ -102,14 +104,16 @@ class Experiment():
 
                 self.performance_run(total_steps)
 
-            elif total_steps % 500 == 0:
+            elif total_steps % 200 == 0:
 
                 #logging.info("Total Steps={:d}: >>> steps/second: {:.2f}, average loss: {:.4f}, "
                 #             "Reward: {:.2f}".format(total_steps,
                 #             1./(time.time()-start_time), loss_l, np.mean(R)))
-                logging.info("Total Steps={:d}: >>> steps/second: {:.2f}, Action_L: {:.4f}, Location_L: {:.4f}, Baseline_L: {:.4f}, "
-                             "Learning Rate: {:.6f}, Reward: {:.2f}".format(total_steps,
-                                                     1./(time.time()-start_time),loss_a, loss_l, loss_b, lr, np.mean(R)))
+                logging.info("Total Steps={:d}: >>> steps/second: {:.2f}, Loss: {:.4f}, "
+                             "Learning Rate: {:.6f}, Accuracy: {:.4f}".format(total_steps,
+                                                     1./(time.time()-start_time), loss,
+                                                     lr, np.mean(np.equal(action,Y).astype(np.float32))
+))
 
     def save(self, path, filename):
         """Saves the experimental results to ``results.json`` file

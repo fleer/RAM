@@ -16,130 +16,22 @@ class RAM():
         self.totalSensorBandwidth = totalSensorBandwidth
         self.batch_size = batch_size
         self.glimpses = glimpses
+        self.R = 0
 
         self.optimizers = []
         self.min_lr = min_lr
         self.lr_decay = lr_decay
         self.lr = lr
+        self.loc_std = loc_std
         # Learning Rate Decay
         if self.lr_decay != 0:
             self.lr_decay_rate = ((lr - min_lr) /
                                  lr_decay)
 
-        self.big_net()
-        self.__build_train_fn(optimizer, lr, momentum, loc_std, clipnorm, clipvalue)
+        self.big_net(lr, momentum)
 
 
-    def __build_train_fn(self, opt, lr, mom, loc_std, clipnorm, clipvalue):
-        """Create a train function
-        It replaces `model.fit(X, y)` because we use the output of model and use it for training.
-        For example, we need action placeholder
-        called `action_one_hot` that stores, which action we took at state `s`.
-        Hence, we can update the same action.
-        This function will create
-        `self.train_fn([state, action_one_hot, discount_reward])`
-        which would train the model.
-        """
-
-        action_prob_placeholder = self.ram.get_layer("action_output").output
-        action_onehot_placeholder = K.placeholder(shape=(None, self.output_dim),
-                                                  name="action_onehot")
-     #   location_mean_placeholder = K.placeholder(shape=(None, 2),
-     #                                             name="location_mean")
-        location_prob_placeholder = self.ram.get_layer("location_output").output
-        baseline = self.ram.get_layer("baseline_output").output
-
-
-        max_p_y = K.argmax(action_prob_placeholder)
-        action = K.argmax(action_onehot_placeholder)
-
-        # Get Reward for current step
-        R = K.equal(max_p_y, action) # reward per example
-        R = K.cast(R, 'float32')
-        R_out = K.reshape(R, (self.batch_size,1))
-
-        # Compute Categorial Crossentropy as action loss
-        # More precicesly: REINFROCE algorithm for action with baseline
-        log_action_prob = (K.log(action_prob_placeholder + 1e-10) * action_onehot_placeholder) * (R_out-baseline)
-        loss_action= - K.sum(log_action_prob, axis =-1)
-       # loss_action = - K.mean(loss_action, axis=0) #+ K.sum(location_prob_placeholder-location_prob_placeholder, axis=-1)
-
-
-        # Individual loss for location network
-        # Compute loss via REINFORCE algorithm
-        # for gaussian distribution
-        # d ln(f(m,s,x))   (x - m)
-        # -------------- = -------- with m = mean, x = sample, s = standard_deviation
-        #       d m          s**2
-
-        sample_loc = K.random_normal(location_prob_placeholder.shape, location_prob_placeholder, loc_std)
-        #sample_loc = K.tanh(sample_loc)
-        #TODO: Check how to deal with the 2 dims (x,y) of location
-        # log_loc = K.sum( location_prob_placeholder - location_mean_placeholder/loc_std**2, axis=-1) * (R_out -baseline)
-        R = K.tile(R_out, [1, 2])
-        b = K.tile(baseline, [1, 2])
-        log_loc = ((sample_loc - location_prob_placeholder)/(loc_std*loc_std)) * (R -b)
-        loss_loc = - log_loc
-       # loss_loc = - K.sum(log_loc, axis =-1)
-       # loss_loc = - K.mean(loss_loc, axis=0)
-
-        loss_b = K.mean(K.square(R_out - baseline), axis=-1)
-
-
-        # Choose Optimizer:
-        if opt == "rmsprop":
-            optimizer = keras.optimizers.rmsprop(lr=lr)
-        elif opt== "adam":
-            self.optimizers= [keras.optimizers.adam(lr=lr, clipnorm=clipnorm, clipvalue=clipvalue) for a in xrange(3)]
-        elif opt== "adadelta":
-            optimizer = keras.optimizers.adadelta(lr=lr)
-        elif opt== 'sgd':
-            self.optimizers= [keras.optimizers.sgd(lr=lr,momentum=mom, clipnorm=clipnorm, clipvalue=clipvalue) for a in xrange(3)]
-          #  self.optimizer] = keras.optimizers.sgd(lr=lr, momentum=mom, clipnorm=clipnorm, clipvalue=clipvalue)
-          #  self.optimizers["location"] = keras.optimizers.sgd(lr=lr, momentum=mom, clipnorm=clipnorm, clipvalue=clipvalue)
-          #  self.optimizers["baseline"] = keras.optimizers.sgd(lr=lr, momentum=mom, clipnorm=clipnorm, clipvalue=clipvalue)
-        else:
-            raise ValueError("Unrecognized update: {}".format(opt))
-
-        self.ram_weights.compile(optimizer=self.optimizers[0],
-                                 loss='categorical_crossentropy')
-
-     #   updates = optimizer.get_updates(params= self.ram_weights.trainable_weights,
-     #                              #constraints=self.ram.constraints,
-     #                              loss=loss_action)
-
-
-        updates_l = self.optimizers[1].get_updates(params= self.ram.get_layer('location_output').trainable_weights,
-                                                    #self.ram_location.trainable_weights,
-                                        #constraints=self.ram.constraints,
-                                        loss=loss_loc)
-
-        updates_b = self.optimizers[2].get_updates(params= self.ram.get_layer('baseline_output').trainable_weights,
-                                        #constraints=self.ram.constraints,
-                                        loss=loss_b)
-
-     #   self.train_fn = K.function(inputs=[action_onehot_placeholder,
-     #                                     self.ram.get_layer("glimpse_input").input,
-     #                                      self.ram.get_layer("location_input").input
-     #                                       ],
-     #                              outputs=[loss_action, R_out],
-     #                              updates=updates)#, updates_l, updates_b])
-        self.train_fn_loc = K.function(inputs=[action_onehot_placeholder,
-                                           self.ram.get_layer("glimpse_input").input,
-                                           self.ram.get_layer("location_input").input
-                                           ],
-                                   outputs= [loss_loc, R_out],
-                                   updates= updates_l)
-        self.train_fn_b = K.function(inputs=[action_onehot_placeholder,
-                                           self.ram.get_layer("glimpse_input").input,
-                                           self.ram.get_layer("location_input").input
-                                           ],
-                                   outputs= [loss_b, baseline],
-                                   updates= updates_b)
-
-
-
-    def big_net(self):
+    def big_net(self, lr, momentum):
         glimpse_model_i = keras.layers.Input(batch_shape=(self.batch_size, self.totalSensorBandwidth),
                                              name='glimpse_input')
         glimpse_model = keras.layers.Dense(128, activation='relu',
@@ -214,45 +106,74 @@ class RAM():
                                  name='baseline_output',
                                          )(model_output)
 
-        self.rnn = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=model_output)
-        self.ram_weights = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=action_out)
-        self.ram_location= keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=location_out)
         self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out, baseline_output])
         #self.ram.compile(optimizer=keras.optimizers.adam(lr=0.001),
-       # self.ram.compile(optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.9, decay=0.0, nesterov=False),
-       #                  loss={'action_output': 'categorical_crossentropy',
-       #                        'location_output': self.REINFORCE_loss(action_p=action_out)})
+        self.ram.compile(optimizer=keras.optimizers.SGD(lr=lr , momentum=momentum, decay=0.0, nesterov=False),
+                         loss={'action_output': self.CROSS_ENTROPY,
+                               'location_output': self.REINFORCE_LOSS(action_p=action_out, baseline=baseline_output),
+                               'baseline_output': self.BASELINE_LOSS(action_p=action_out)})
+    def CROSS_ENTROPY(self, y_true, y_pred):
+        self.ram.trainable = True
+        return K.categorical_crossentropy(y_true, y_pred)
+
+    def REINFORCE_LOSS(self, action_p, baseline):
+        def loss(y_true, y_pred):
+            max_p_y = K.argmax(action_p)
+            action = K.argmax(y_true)
+
+            # Get Reward for current step
+            R = K.equal(max_p_y, action) # reward per example
+            R = K.cast(R, 'float32')
+            R_out = K.reshape(R, (self.batch_size,1))
+
+            # Individual loss for location network
+            # Compute loss via REINFORCE algorithm
+            # for gaussian distribution
+            # d ln(f(m,s,x))   (x - m)
+            # -------------- = -------- with m = mean, x = sample, s = standard_deviation
+            #       d m          s**2
+
+            sample_loc = K.random_normal(y_pred.shape, y_pred, self.loc_std)
+            #sample_loc = K.tanh(sample_loc)
+            #TODO: Check how to deal with the 2 dims (x,y) of location
+            # log_loc = K.sum( location_prob_placeholder - location_mean_placeholder/loc_std**2, axis=-1) * (R_out -baseline)
+            R = K.tile(R_out, [1, 2])
+            b = K.tile(baseline, [1, 2])
+            loss_loc = ((sample_loc - y_pred)/(self.loc_std*self.loc_std)) * (R -b)
+            return - loss_loc
+        self.ram.trainable = False
+        self.ram.get_layer('location_output').trainable = True
+        return loss
+
+    def BASELINE_LOSS(self, action_p):
+        def loss(y_true, y_pred):
+            max_p_y = K.argmax(action_p)
+            action = K.argmax(y_true)
+
+            # Get Reward for current step
+            R = K.equal(max_p_y, action) # reward per example
+            R = K.cast(R, 'float32')
+            R_out = K.reshape(R, (self.batch_size,1))
+            return K.mean(K.square(R_out - y_pred), axis=-1)
+        self.ram.trainable = False
+        self.ram.get_layer('baseline_output').trainable = True
+        return loss
+
 
     def learning_rate_decay(self):
-        for opt in self.optimizers:
-            lr = K.get_value(opt.lr)
-            # Linear Learning Rate Decay
-            lr = max(self.min_lr, lr - self.lr_decay_rate)
-            K.set_value(opt.lr, lr)
+        lr = K.get_value(self.ram.optimizer.lr)
+        # Linear Learning Rate Decay
+        lr = max(self.min_lr, lr - self.lr_decay_rate)
+        K.set_value(self.ram.optimizer.lr, lr)
         return lr
 
     def train(self, zooms, loc_input, true_a):
-        #b = np.stack(b)
-      #  b = np.concatenate([b, b], axis=2)
-      #  print b
-
-
-        #self.discounted_r = np.zeros((self.batch_size, 1))
-        #for b in range(self.batch_size):
-        #    self.discounted_r[b] = np.sum(self.compute_discounted_R(r[b], .99))
+        self.ram.trainable = True
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
-      #  loc_input = np.reshape(loc, (self.batch_size, 2))
 
-        #l_mean = np.mean(loc_mean, axis=-2)
-       # loss, R = self.train_fn([true_a, glimpse_input, loc_input])
-        #old_weights = self.rnn.get_weights()
-        #new_weights = self.rnn.get_weights()
-        #self.rnn.set_weights(old_weights)
-        #self.rnn.trainable = False
-        loss_b, b = self.train_fn_b([true_a, glimpse_input, loc_input])
-        #self.rnn.trainable = True
-        loss_l, R = self.train_fn_loc([true_a, glimpse_input, loc_input])
-        loss = self.ram_weights.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input}, true_a)
+        loss = self.ram.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input},
+                                       {'action_output': true_a, 'location_output': true_a, 'baseline_output': true_a})
+
         if self.lr_decay !=0:
            lr = self.learning_rate_decay()
         else:
@@ -267,7 +188,7 @@ class RAM():
        # print loss_b
 
         #return loss, loss_l, loss_b, R#, np.mean(b, axis=-1)
-        return np.mean(loss), np.mean(loss_l), np.mean(loss_b), R, lr#, np.mean(b, axis=-1)
+        return np.mean(loss), lr#, np.mean(b, axis=-1)
 
     def reset_states(self):
         self.ram.reset_states()
@@ -301,12 +222,7 @@ class RAM():
     def choose_action(self,X,loc):
 
         glimpse_input = np.reshape(X, (self.batch_size, self.totalSensorBandwidth))
-       # self.ram_loc.predict_on_batch({"glimpse_input": glimpse_input, 'location_input': loc})
         action_prob, loc, _ = self.ram.predict_on_batch({"glimpse_input": glimpse_input, 'location_input': loc})
-        #gl_out = self.gl_net.predict_on_batch([glimpse_input, loc])
-        #ram_out = self.ram.predict_on_batch(np.reshape(gl_out, (self.batch_size, 1, 256)))
-       # print self.act_net.predict_on_batch(ram_out)
-
         #return self.act_net.predict_on_batch(ram_out), self.loc_net.predict_on_batch(ram_out), ram_out, gl_out
         return action_prob, loc
 
