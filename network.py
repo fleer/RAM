@@ -2,12 +2,13 @@ import keras
 from keras import backend as K
 from keras import layers
 import numpy as np
-# from RWA import RWA
+from collections import defaultdict
 
 class RAM():
 
     glimpses = 6
-    def __init__(self, totalSensorBandwidth, batch_size, glimpses, optimizer, lr, lr_d, momentum, discount, loc_std, clipnorm, clipvalue):
+    def __init__(self, totalSensorBandwidth, batch_size, glimpses, optimizer,
+                 lr, lr_decay, min_lr, momentum, discount, loc_std, clipnorm, clipvalue):
 
         # TODO --> Integrate Discount Factor for Reward
         self.discounted_r = np.zeros((batch_size, 1))
@@ -15,11 +16,21 @@ class RAM():
         self.totalSensorBandwidth = totalSensorBandwidth
         self.batch_size = batch_size
         self.glimpses = glimpses
+
+        self.optimizers = []
+        self.min_lr = min_lr
+        self.lr_decay = lr_decay
+        self.lr = lr
+        # Learning Rate Decay
+        if self.lr_decay != 0:
+            self.lr_decay_rate = ((lr - min_lr) /
+                                 lr_decay)
+
         self.big_net()
-        self.__build_train_fn(optimizer, lr, lr_d, momentum, loc_std, clipnorm, clipvalue)
+        self.__build_train_fn(optimizer, lr, momentum, loc_std, clipnorm, clipvalue)
 
 
-    def __build_train_fn(self, opt, lr, lr_d, mom, loc_std, clipnorm, clipvalue):
+    def __build_train_fn(self, opt, lr, mom, loc_std, clipnorm, clipvalue):
         """Create a train function
         It replaces `model.fit(X, y)` because we use the output of model and use it for training.
         For example, we need action placeholder
@@ -74,23 +85,23 @@ class RAM():
 
         loss_b = K.mean(K.square(R_out - baseline), axis=-1)
 
+
         # Choose Optimizer:
         if opt == "rmsprop":
             optimizer = keras.optimizers.rmsprop(lr=lr)
         elif opt== "adam":
-            optimizer = keras.optimizers.adam(lr=lr, decay=lr_d, clipnorm=clipnorm, clipvalue=clipvalue)
-            optimizer_l = keras.optimizers.adam(lr=lr, decay=lr_d, clipnorm=clipnorm, clipvalue=clipvalue)
-            optimizer_b = keras.optimizers.adam(lr=lr, decay=lr_d, clipnorm=clipnorm, clipvalue=clipvalue)
+            self.optimizers= [keras.optimizers.adam(lr=lr, clipnorm=clipnorm, clipvalue=clipvalue) for a in xrange(3)]
         elif opt== "adadelta":
             optimizer = keras.optimizers.adadelta(lr=lr)
         elif opt== 'sgd':
-            optimizer = keras.optimizers.sgd(lr=lr, decay=lr_d, momentum=mom, clipnorm=clipnorm, clipvalue=clipvalue)
-            optimizer_l = keras.optimizers.sgd(lr=lr, decay=lr_d, momentum=mom, clipnorm=clipnorm, clipvalue=clipvalue)
-            optimizer_b = keras.optimizers.sgd(lr=lr, decay=lr_d, momentum=mom, clipnorm=clipnorm, clipvalue=clipvalue)
+            self.optimizers= [keras.optimizers.sgd(lr=lr,momentum=mom, clipnorm=clipnorm, clipvalue=clipvalue) for a in xrange(3)]
+          #  self.optimizer] = keras.optimizers.sgd(lr=lr, momentum=mom, clipnorm=clipnorm, clipvalue=clipvalue)
+          #  self.optimizers["location"] = keras.optimizers.sgd(lr=lr, momentum=mom, clipnorm=clipnorm, clipvalue=clipvalue)
+          #  self.optimizers["baseline"] = keras.optimizers.sgd(lr=lr, momentum=mom, clipnorm=clipnorm, clipvalue=clipvalue)
         else:
             raise ValueError("Unrecognized update: {}".format(opt))
 
-        self.ram_weights.compile(optimizer=optimizer,
+        self.ram_weights.compile(optimizer=self.optimizers[0],
                                  loss='categorical_crossentropy')
 
      #   updates = optimizer.get_updates(params= self.ram_weights.trainable_weights,
@@ -98,12 +109,12 @@ class RAM():
      #                              loss=loss_action)
 
 
-        updates_l = optimizer_l.get_updates(params= self.ram.get_layer('location_output').trainable_weights,
+        updates_l = self.optimizers[1].get_updates(params= self.ram.get_layer('location_output').trainable_weights,
                                                     #self.ram_location.trainable_weights,
                                         #constraints=self.ram.constraints,
                                         loss=loss_loc)
 
-        updates_b = optimizer_b.get_updates(params= self.ram.get_layer('baseline_output').trainable_weights,
+        updates_b = self.optimizers[2].get_updates(params= self.ram.get_layer('baseline_output').trainable_weights,
                                         #constraints=self.ram.constraints,
                                         loss=loss_b)
 
@@ -212,6 +223,14 @@ class RAM():
        #                  loss={'action_output': 'categorical_crossentropy',
        #                        'location_output': self.REINFORCE_loss(action_p=action_out)})
 
+    def learning_rate_decay(self):
+        for opt in self.optimizers:
+            lr = K.get_value(opt.lr)
+            # Linear Learning Rate Decay
+            lr = max(self.min_lr, lr - self.lr_decay_rate)
+            K.set_value(opt.lr, lr)
+        return lr
+
     def train(self, zooms, loc_input, true_a):
         #b = np.stack(b)
       #  b = np.concatenate([b, b], axis=2)
@@ -232,8 +251,12 @@ class RAM():
         #self.rnn.trainable = False
         loss_b, b = self.train_fn_b([true_a, glimpse_input, loc_input])
         #self.rnn.trainable = True
-        loss_l,R = self.train_fn_loc([true_a, glimpse_input, loc_input])
+        loss_l, R = self.train_fn_loc([true_a, glimpse_input, loc_input])
         loss = self.ram_weights.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input}, true_a)
+        if self.lr_decay !=0:
+           lr = self.learning_rate_decay()
+        else:
+           lr = self.lr
         #self.rnn.set_weights(new_weights)
         #ath = keras.utils.to_categorical(true_a, self.output_dim)
         #self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
@@ -244,7 +267,7 @@ class RAM():
        # print loss_b
 
         #return loss, loss_l, loss_b, R#, np.mean(b, axis=-1)
-        return np.mean(loss), np.mean(loss_l), np.mean(loss_b), R#, np.mean(b, axis=-1)
+        return np.mean(loss), np.mean(loss_l), np.mean(loss_b), R, lr#, np.mean(b, axis=-1)
 
     def reset_states(self):
         self.ram.reset_states()

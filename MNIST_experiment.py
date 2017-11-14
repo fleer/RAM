@@ -44,10 +44,8 @@ class Experiment():
                            self.nZooms, self.loc_std, DOMAIN_OPTIONS.UNIT_PIXELS)
         self.ram = RAM(totalSensorBandwidth, self.batch_size, self.nGlimpses,
                        PARAMETERS.OPTIMIZER, PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY,
-                       PARAMETERS.MOMENTUM, PARAMETERS.DISCOUNT, DOMAIN_OPTIONS.LOC_STD, PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE)
-        # What happens to learning rate
-        self.lr = PARAMETERS.LEARNING_RATE
-        self.lr_decay = PARAMETERS.LEARNING_RATE_DECAY
+                       PARAMETERS.MIN_LEARNING_RATE, PARAMETERS.MOMENTUM, PARAMETERS.DISCOUNT,
+                       DOMAIN_OPTIONS.LOC_STD, PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE)
 
         self.train()
         self.save('./', results_file)
@@ -93,7 +91,7 @@ class Experiment():
                 sample_loc = np.tanh(np.random.normal(loc, self.loc_std, loc.shape))
             zooms = self.mnist.glimpseSensor(X, sample_loc)
             ath = keras.utils.to_categorical(Y, 10)
-            loss_a, loss_l, loss_b, R = self.ram.train(zooms, sample_loc, ath)
+            loss_a, loss_l, loss_b, R, lr = self.ram.train(zooms, sample_loc, ath)
             self.ram.reset_states()
            # if total_steps % 20 == 0:
            #     print "Action_L: {}, Location_L: {}, Baseline_L: {}".format(loss_a, loss_l, loss_b)
@@ -105,9 +103,7 @@ class Experiment():
                 self.performance_run(total_steps)
 
             elif total_steps % 500 == 0:
-                lr = self.lr
-                if self.lr_decay > 0:
-                    lr *= 1. / (1. + self.lr_decay * total_steps)
+
                 #logging.info("Total Steps={:d}: >>> steps/second: {:.2f}, average loss: {:.4f}, "
                 #             "Reward: {:.2f}".format(total_steps,
                 #             1./(time.time()-start_time), loss_l, np.mean(R)))

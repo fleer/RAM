@@ -20,7 +20,7 @@ class MNIST():
         self.loc_std = loc_std # std when setting the location
 
     def get_batch(self, batch_size):
-        X, Y = self.dataset.test.next_batch(batch_size)
+        X, Y = self.dataset.train.next_batch(batch_size)
         return X,Y
 
     def glimpseSensor(self, img, normLoc):
