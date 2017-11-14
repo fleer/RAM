@@ -24,10 +24,10 @@ class MNIST_DOMAIN_OPTIONS:
     CHANNELS = 1
     #
     # Resolution of the Sensor
-    SENSOR = 8
+    SENSOR = 12
     # Number of zooms
-    NZOOMS = 1
-    # Minimal zoom size # zooms -> mnist_size * (min_zoom **<depth_level>)
+    NZOOMS = 3
+    # zoom sale # zooms -> mnist_size * (min_zoom **<depth_level>)
     MIN_ZOOM = 2
     # Number of Glimpses
     NGLIMPSES = 7
@@ -41,7 +41,7 @@ class MNIST_DOMAIN_OPTIONS:
     # then if UNIT_PIXELS = 14
     UNIT_PIXELS = 13
     # Translated MNIST
-    TRANSLATE = False
+    TRANSLATE = True
     # Size of each image: MNIST_SIZE x MNIST_SIZE
     TRANSLATED_MNIST_SIZE = 60
 
@@ -57,7 +57,7 @@ class PARAMETERS:
     #   =========================
 
     #   Number of learning steps
-    MAX_STEPS = 500000
+    MAX_STEPS = 1000000
     #   Number of times, the current
     #   Policy should be avaluated
     NUM_POLICY_CHECKS = 10
@@ -78,7 +78,7 @@ class PARAMETERS:
     LEARNING_RATE = 0.01
     # Number of steps the Learning rate should (linearly)
     # decay to MIN_LEARNING_RATE
-    LEARNING_RATE_DECAY = 100000
+    LEARNING_RATE_DECAY = 250000
     # Minimal Learning Rate
     MIN_LEARNING_RATE = 0.00001
     # Momentum

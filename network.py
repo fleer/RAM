@@ -16,7 +16,6 @@ class RAM():
         self.totalSensorBandwidth = totalSensorBandwidth
         self.batch_size = batch_size
         self.glimpses = glimpses
-        self.R = 0
 
         self.optimizers = []
         self.min_lr = min_lr

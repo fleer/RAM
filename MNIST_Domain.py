@@ -5,7 +5,7 @@ import cv2
 
 class MNIST():
 
-    def __init__(self, mnist_size, batch_size, channels, minRadius, sensorBandwidth,depth, loc_std, unit_pixels):
+    def __init__(self, mnist_size, batch_size, channels, minRadius, sensorBandwidth,depth, loc_std, unit_pixels, translate, translated_mnist_size):
 
         self.mnist_size = mnist_size
         self.batch_size = batch_size
@@ -19,8 +19,21 @@ class MNIST():
 
         self.loc_std = loc_std # std when setting the location
 
-    def get_batch(self, batch_size):
+        self.translate = translate
+        if translate:
+            self.translated_mnist_size = mnist_size
+            self.mnist_size = translated_mnist_size
+
+    def get_batch_train(self, batch_size):
         X, Y = self.dataset.train.next_batch(batch_size)
+        if self.translate:
+           X, _ = self.convertTranslated(X, self.translated_mnist_size, self.mnist_size)
+        return X,Y
+
+    def get_batch_test(self, batch_size):
+        X, Y = self.dataset.test.next_batch(batch_size)
+        if self.translate:
+            X, _ = self.convertTranslated(X, self.translated_mnist_size, self.mnist_size)
         return X,Y
 
     def glimpseSensor(self, img, normLoc):
@@ -151,10 +164,25 @@ class MNIST():
 
         return padded
 
+    def convertTranslated(self, images, initImgSize, finalImgSize):
+        size_diff = finalImgSize - initImgSize
+        newimages = np.zeros([self.batch_size, finalImgSize*finalImgSize])
+        imgCoord = np.zeros([self.batch_size,2])
+        for k in xrange(self.batch_size):
+            image = images[k, :]
+            image = np.reshape(image, (initImgSize, initImgSize))
+            # generate and save random coordinates
+            randX = np.random.randint(0, size_diff)
+            randY = np.random.randint(0, size_diff)
+            imgCoord[k,:] = np.array([randX, randY])
+            # padding
+            image = np.lib.pad(image, ((randX, size_diff - randX), (randY, size_diff - randY)), 'constant', constant_values = (0))
+            newimages[k, :] = np.reshape(image, (finalImgSize*finalImgSize))
 
+        return newimages, imgCoord
 
 def main():
-    mnist = MNIST(28,4,1,2,6,1,0.11, 13)
+    mnist = MNIST(28,4,1,2,6,1,0.11, 13, True, 60)
     mnist_size = mnist.mnist_size
     batch_size = mnist.batch_size
     channels = 1 # grayscale
@@ -165,7 +193,7 @@ def main():
     depth = 1 # zooms
 
     glimpses = 4
-    X, Y= mnist.get_batch(batch_size)
+    X, Y= mnist.get_batch_test(batch_size)
     #mnist.glimpseSensor(X, )
 
 

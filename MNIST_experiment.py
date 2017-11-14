@@ -41,7 +41,8 @@ class Experiment():
 
         totalSensorBandwidth = self.nZooms * sensorResolution * sensorResolution * channels
         self.mnist = MNIST(mnist_size, self.batch_size, channels, minRadius, sensorResolution,
-                           self.nZooms, self.loc_std, DOMAIN_OPTIONS.UNIT_PIXELS)
+                           self.nZooms, self.loc_std, DOMAIN_OPTIONS.UNIT_PIXELS,
+                           DOMAIN_OPTIONS.TRANSLATE, DOMAIN_OPTIONS.TRANSLATED_MNIST_SIZE)
         self.ram = RAM(totalSensorBandwidth, self.batch_size, self.nGlimpses,
                        PARAMETERS.OPTIMIZER, PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY,
                        PARAMETERS.MIN_LEARNING_RATE, PARAMETERS.MOMENTUM, PARAMETERS.DISCOUNT,
@@ -56,7 +57,7 @@ class Experiment():
         batches_in_epoch = len(data._images) // self.batch_size
 
         for i in xrange(batches_in_epoch):
-            X, Y = self.mnist.dataset.test.next_batch(self.batch_size)
+            X, Y= self.mnist.get_batch_test(self.batch_size)
             loc = np.random.uniform(-1, 1,(self.batch_size, 2))
             sample_loc = np.tanh(np.random.normal(loc, self.loc_std, loc.shape))
             for n in range(self.nGlimpses):
@@ -82,7 +83,7 @@ class Experiment():
         for i in range(self.max_steps):
             start_time = time.time()
 
-            X, Y= self.mnist.get_batch(self.batch_size)
+            X, Y= self.mnist.get_batch_train(self.batch_size)
             baseline = np.zeros((self.batch_size, self.nGlimpses, 2))
             loc = np.random.uniform(-1, 1, (self.batch_size, 2))
             sample_loc = np.tanh(np.random.normal(loc, self.loc_std, loc.shape))
