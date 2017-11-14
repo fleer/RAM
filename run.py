@@ -57,7 +57,7 @@ class PARAMETERS:
     #   =========================
 
     #   Number of learning steps
-    MAX_STEPS = 1000000
+    MAX_STEPS = 2000
     #   Number of times, the current
     #   Policy should be avaluated
     NUM_POLICY_CHECKS = 40
@@ -78,7 +78,7 @@ class PARAMETERS:
     LEARNING_RATE = 0.01
     # Number of steps the Learning rate should (linearly)
     # decay to MIN_LEARNING_RATE
-    LEARNING_RATE_DECAY = 400000
+    LEARNING_RATE_DECAY = 800
     # Minimal Learning Rate
     MIN_LEARNING_RATE = 0.00001
     # Momentum

@@ -48,7 +48,7 @@ class Experiment():
                        PARAMETERS.MIN_LEARNING_RATE, PARAMETERS.MOMENTUM, PARAMETERS.DISCOUNT,
                        DOMAIN_OPTIONS.LOC_STD, PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE)
 
-        self.train()
+        self.train(PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY)
         self.save('./', results_file)
 
     def performance_run(self, total_steps):
@@ -73,7 +73,7 @@ class Experiment():
 
         logging.info("Total Steps={:d}: >>> Accuracy: {:.4f}".format(total_steps, actions/float(batches_in_epoch)))
 
-    def train(self):
+    def train(self, lr, lr_decay):
         total_steps = 0
 
         # Initial Performance Check
@@ -83,36 +83,39 @@ class Experiment():
         for i in range(self.max_steps):
             start_time = time.time()
 
-            X, Y= self.mnist.get_batch_train(self.batch_size)
-            baseline = np.zeros((self.batch_size, self.nGlimpses, 2))
-            loc = np.random.uniform(-1, 1, (self.batch_size, 2))
-            sample_loc = np.tanh(np.random.normal(loc, self.loc_std, loc.shape))
-            for n in range(1, self.nGlimpses):
-                zooms = self.mnist.glimpseSensor(X, sample_loc)
-                a_prob, loc = self.ram.choose_action(zooms, sample_loc)
+            while total_steps == self.mnist.dataset.train.epochs_completed:
+                X, Y= self.mnist.get_batch_train(self.batch_size)
+                loc = np.random.uniform(-1, 1, (self.batch_size, 2))
                 sample_loc = np.tanh(np.random.normal(loc, self.loc_std, loc.shape))
-            zooms = self.mnist.glimpseSensor(X, sample_loc)
-            ath = keras.utils.to_categorical(Y, 10)
-            loss, lr = self.ram.train(zooms, sample_loc, ath)
-            action = np.argmax(a_prob, axis=-1)
-            self.ram.reset_states()
+                for n in range(1, self.nGlimpses):
+                    zooms = self.mnist.glimpseSensor(X, sample_loc)
+                    a_prob, loc = self.ram.choose_action(zooms, sample_loc)
+                    sample_loc = np.tanh(np.random.normal(loc, self.loc_std, loc.shape))
+                zooms = self.mnist.glimpseSensor(X, sample_loc)
+                ath = keras.utils.to_categorical(Y, 10)
+                loss = self.ram.train(zooms, sample_loc, ath)
+                action = np.argmax(a_prob, axis=-1)
+                self.ram.reset_states()
            # if total_steps % 20 == 0:
            #     print "Action_L: {}, Location_L: {}, Baseline_L: {}".format(loss_a, loss_l, loss_b)
+            #total_steps += 1
             total_steps += 1
+            if lr_decay > 0:
+                lr = self.ram.learning_rate_decay()
 
             # Check Performance
             if total_steps % (self.max_steps / self.num_policy_checks) == 0:
 
                 self.performance_run(total_steps)
 
-            elif total_steps % 200 == 0:
+            elif self.mnist.dataset.train.epochs_completed % 1 == 0:
 
                 #logging.info("Total Steps={:d}: >>> steps/second: {:.2f}, average loss: {:.4f}, "
                 #             "Reward: {:.2f}".format(total_steps,
                 #             1./(time.time()-start_time), loss_l, np.mean(R)))
-                logging.info("Total Steps={:d}: >>> steps/second: {:.2f}, Loss: {:.4f}, "
+                logging.info("Epoch={:d}: >>> training time/epoch: {:.2f}, Loss: {:.4f}, "
                              "Learning Rate: {:.6f}, Accuracy: {:.4f}".format(total_steps,
-                                                     1./(time.time()-start_time), loss,
+                                                     (time.time()-start_time), loss,
                                                      lr, np.mean(np.equal(action,Y).astype(np.float32))
 ))
 

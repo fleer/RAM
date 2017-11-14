@@ -158,10 +158,10 @@ class RAM():
         loss = self.ram.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input},
                                        {'action_output': true_a, 'location_output': true_a, 'baseline_output': true_a})
 
-        if self.lr_decay !=0:
-           lr = self.learning_rate_decay()
-        else:
-           lr = self.lr
+        #if self.lr_decay !=0:
+        #   lr = self.learning_rate_decay()
+        #else:
+        #   lr = self.lr
         #self.rnn.set_weights(new_weights)
         #ath = keras.utils.to_categorical(true_a, self.output_dim)
         #self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
@@ -172,7 +172,7 @@ class RAM():
        # print loss_b
 
         #return loss, loss_l, loss_b, R#, np.mean(b, axis=-1)
-        return np.mean(loss), lr#, np.mean(b, axis=-1)
+        return np.mean(loss)
 
     def reset_states(self):
         self.ram.reset_states()

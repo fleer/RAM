@@ -39,7 +39,7 @@ class MNIST_DOMAIN_OPTIONS:
     # can be anywhere between the 2rd and 27th pixel (for a 1x28x28 MNIST example).
     # So glimpses of the corner will have fewer zero-padding values
     # then if UNIT_PIXELS = 14
-    UNIT_PIXELS = 13
+    UNIT_PIXELS = 26
     # Translated MNIST
     TRANSLATE = True
     # Size of each image: MNIST_SIZE x MNIST_SIZE
