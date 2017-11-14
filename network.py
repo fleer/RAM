@@ -16,8 +16,6 @@ class RAM():
         self.totalSensorBandwidth = totalSensorBandwidth
         self.batch_size = batch_size
         self.glimpses = glimpses
-
-        self.optimizers = []
         self.min_lr = min_lr
         self.lr_decay = lr_decay
         self.lr = lr
@@ -47,6 +45,7 @@ class RAM():
 
         location_model_i = keras.layers.Input(batch_shape=(self.batch_size, 2),
                                               name='location_input')
+
         location_model = keras.layers.Dense(128,
                                             activation = 'relu',
                                             kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
@@ -59,17 +58,10 @@ class RAM():
                                             bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                                 name='location_2'
                                                 )(location_model)
-        #model_merge = K.relu(keras.layers.Lambda(lambda x: x[0] + x[1])([location_model_out, glimpse_model_out]))
+
         model_merge = keras.layers.add([location_model_out, glimpse_model_out], name='add')
-        #model_merge = keras.layers.add([glimpse_model_out, location_model_out])
-        #model_merge = self.merge_layer([glimpse_model_out, location_model_out])
         glimpse_network_output  = keras.layers.Lambda(lambda x: K.relu(x))(model_merge)
 
-      #  model_merge = keras.layers.add([glimpse_model, location_model])
-      #  glimpse_network_output = keras.layers.Dense(256,
-      #                                              kernel_initializer=keras.initializers.random_uniform(),
-      #                                              bias_initializer=keras.initializers.random_uniform(),
-      #                                              activation='relu')(model_merge)
         rnn_input = keras.layers.Reshape((256,1))(glimpse_network_output)
         model_output = keras.layers.recurrent.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',
                                                 return_sequences=False, stateful=True, unroll=True,
@@ -77,12 +69,6 @@ class RAM():
                                                 bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                                 name = 'rnn')(rnn_input)
 
-        #model = RWA(256,recurrent_initializer="zeros", activation='relu',
-        #                                         return_sequences=False, stateful=True, unroll=True,
-        #                                         kernel_initializer=keras.initializers.random_uniform(),
-        #                                         average_initializer = keras.initializers.random_uniform(),
-        #                                         bias_initializer=keras.initializers.random_uniform(),
-        #                                         name = 'rnn')(rnn_input)
         action_out = keras.layers.Dense(10,
                                  activation='softmax',
                                  kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
@@ -106,11 +92,11 @@ class RAM():
                                          )(model_output)
 
         self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out, baseline_output])
-        #self.ram.compile(optimizer=keras.optimizers.adam(lr=0.001),
         self.ram.compile(optimizer=keras.optimizers.SGD(lr=lr , momentum=momentum, decay=0.0, nesterov=False),
                          loss={'action_output': self.CROSS_ENTROPY,
                                'location_output': self.REINFORCE_LOSS(action_p=action_out, baseline=baseline_output),
                                'baseline_output': self.BASELINE_LOSS(action_p=action_out)})
+
     def CROSS_ENTROPY(self, y_true, y_pred):
         self.ram.trainable = True
         return K.categorical_crossentropy(y_true, y_pred)
@@ -135,7 +121,6 @@ class RAM():
             sample_loc = K.random_normal(y_pred.shape, y_pred, self.loc_std)
             #sample_loc = K.tanh(sample_loc)
             #TODO: Check how to deal with the 2 dims (x,y) of location
-            # log_loc = K.sum( location_prob_placeholder - location_mean_placeholder/loc_std**2, axis=-1) * (R_out -baseline)
             R = K.tile(R_out, [1, 2])
             b = K.tile(baseline, [1, 2])
             loss_loc = ((sample_loc - y_pred)/(self.loc_std*self.loc_std)) * (R -b)
@@ -191,8 +176,6 @@ class RAM():
 
     def reset_states(self):
         self.ram.reset_states()
-      #  self.ram.get_layer('rnn').reset_states()
-      #  self.ram_loc.get_layer('rnn').reset_states()
 
     def compute_discounted_R(self, R, discount_rate=.99):
         """Returns discounted rewards
@@ -224,14 +207,6 @@ class RAM():
         action_prob, loc, _ = self.ram.predict_on_batch({"glimpse_input": glimpse_input, 'location_input': loc})
         #return self.act_net.predict_on_batch(ram_out), self.loc_net.predict_on_batch(ram_out), ram_out, gl_out
         return action_prob, loc
-
-
-    def get_best_action(self,prob_a):
-        return np.argmax(prob_a)
-
-
-
-
 
 def main():
     totalSensorBandwidth = 3 * 8 * 8 * 1
