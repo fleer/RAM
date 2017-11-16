@@ -26,10 +26,10 @@ class RAM():
             self.lr_decay_rate = ((lr - min_lr) /
                                  lr_decay)
 
-        self.big_net(lr, momentum)
+        self.big_net(optimizer, lr, momentum, clipnorm, clipvalue)
 
 
-    def big_net(self, lr, momentum):
+    def big_net(self, optimizer, lr, momentum, clipnorm, clipvalue):
         glimpse_model_i = keras.layers.Input(batch_shape=(self.batch_size, self.totalSensorBandwidth),
                                              name='glimpse_input')
         glimpse_model = keras.layers.Dense(128, activation='relu',
@@ -93,10 +93,30 @@ class RAM():
                                          )(model_output)
 
         self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out, baseline_output])
-        self.ram.compile(optimizer=keras.optimizers.SGD(lr=lr , momentum=momentum, decay=0.0, nesterov=False),
-                         loss={'action_output': self.CROSS_ENTROPY,
-                               'location_output': self.REINFORCE_LOSS(action_p=action_out, baseline=baseline_output),
-                               'baseline_output': self.BASELINE_LOSS(action_p=action_out)})
+
+
+        if optimizer == "rmsprop":
+            self.ram.compile(optimizer=keras.optimizers.rmsprop(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
+                             loss={'action_output': self.CROSS_ENTROPY,
+                                   'location_output': self.REINFORCE_LOSS(action_p=action_out, baseline=baseline_output),
+                                   'baseline_output': self.BASELINE_LOSS(action_p=action_out)})
+        elif optimizer == "adam":
+            self.ram.compile(optimizer=keras.optimizers.adam(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
+                             loss={'action_output': self.CROSS_ENTROPY,
+                                   'location_output': self.REINFORCE_LOSS(action_p=action_out, baseline=baseline_output),
+                                   'baseline_output': self.BASELINE_LOSS(action_p=action_out)})
+        elif optimizer == "adadelta":
+            self.ram.compile(optimizer=keras.optimizers.adadelta(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
+                             loss={'action_output': self.CROSS_ENTROPY,
+                                   'location_output': self.REINFORCE_LOSS(action_p=action_out, baseline=baseline_output),
+                                   'baseline_output': self.BASELINE_LOSS(action_p=action_out)})
+        elif optimizer == 'sgd':
+            self.ram.compile(optimizer=keras.optimizers.SGD(lr=lr, momentum=momentum, nesterov=False, clipvalue=clipvalue, clipnorm=clipnorm),
+                             loss={'action_output': self.CROSS_ENTROPY,
+                                   'location_output': self.REINFORCE_LOSS(action_p=action_out, baseline=baseline_output),
+                                   'baseline_output': self.BASELINE_LOSS(action_p=action_out)})
+        else:
+            raise ValueError("Unrecognized update: {}".format(optimizer))
 
     def CROSS_ENTROPY(self, y_true, y_pred):
       #  self.ram.trainable = True
