@@ -2,13 +2,14 @@ import keras
 from keras import backend as K
 from keras import layers
 import numpy as np
+import os
 from collections import defaultdict
 
 class RAM():
 
     glimpses = 6
     def __init__(self, totalSensorBandwidth, batch_size, glimpses, optimizer,
-                 lr, lr_decay, min_lr, momentum, discount, loc_std, clipnorm, clipvalue):
+                 lr, lr_decay, min_lr, momentum, loc_std, clipnorm, clipvalue):
 
         # TODO --> Integrate Discount Factor for Reward
         self.discounted_r = np.zeros((batch_size, 1))
@@ -59,7 +60,7 @@ class RAM():
                                                 name='location_2'
                                                 )(location_model)
 
-        model_merge = keras.layers.add([location_model_out, glimpse_model_out], name='add')
+        model_merge = keras.layers.add([glimpse_model_out, location_model_out], name='add')
         glimpse_network_output  = keras.layers.Lambda(lambda x: K.relu(x))(model_merge)
 
         rnn_input = keras.layers.Reshape((256,1))(glimpse_network_output)
@@ -98,7 +99,7 @@ class RAM():
                                'baseline_output': self.BASELINE_LOSS(action_p=action_out)})
 
     def CROSS_ENTROPY(self, y_true, y_pred):
-        self.ram.trainable = True
+      #  self.ram.trainable = True
         return K.categorical_crossentropy(y_true, y_pred)
 
     def REINFORCE_LOSS(self, action_p, baseline):
@@ -125,8 +126,8 @@ class RAM():
             b = K.tile(baseline, [1, 2])
             loss_loc = ((sample_loc - y_pred)/(self.loc_std*self.loc_std)) * (R -b)
             return - loss_loc
-        self.ram.trainable = False
-        self.ram.get_layer('location_output').trainable = True
+      #  self.ram.trainable = False
+      #  self.ram.get_layer('location_output').trainable = True
         return loss
 
     def BASELINE_LOSS(self, action_p):
@@ -139,8 +140,8 @@ class RAM():
             R = K.cast(R, 'float32')
             R_out = K.reshape(R, (self.batch_size,1))
             return K.mean(K.square(R_out - y_pred), axis=-1)
-        self.ram.trainable = False
-        self.ram.get_layer('baseline_output').trainable = True
+      #  self.ram.trainable = False
+      #  self.ram.get_layer('baseline_output').trainable = True
         return loss
 
 
@@ -152,7 +153,7 @@ class RAM():
         return lr
 
     def train(self, zooms, loc_input, true_a):
-        self.ram.trainable = True
+      #  self.ram.trainable = True
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
 
         loss = self.ram.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input},
@@ -208,9 +209,47 @@ class RAM():
         #return self.act_net.predict_on_batch(ram_out), self.loc_net.predict_on_batch(ram_out), ram_out, gl_out
         return action_prob, loc
 
+    def save_model(self, path, filename):
+        """
+        Saves the model to ``model.json`` file and
+        also the model weights to model.h5 file
+        """
+        model_fn = os.path.join(path, filename)
+        if not os.path.exists(path):
+            os.makedirs(path)
+        # serialize model to JSON
+        model_json = self.ram.to_json()
+        with open(model_fn + ".json", "w") as json_file:
+            json_file.write(model_json)
+        # serialize weights to HDF5
+        self.ram.save_weights(model_fn + ".h5")
+
+    def load_model(self, path, filename):
+        """
+        Saves the model to ``model.json`` file and
+        also the model weights to model.h5 file
+        """
+        model_fn = os.path.join(path, filename)
+        if os.path.isfile(model_fn):
+            # load json and create model
+            json_file = open(model_fn + '.json', 'r')
+            loaded_model_json = json_file.read()
+            json_file.close()
+            self.ram = keras.models.model_from_json(loaded_model_json)
+            # load weights into new model
+            self.ram.load_weights(model_fn + ".h5")
+            return True
+        else:
+            return False
+
+
 def main():
     totalSensorBandwidth = 3 * 8 * 8 * 1
-    ram = RAM(totalSensorBandwidth, 32, 6)
+    ram = RAM(totalSensorBandwidth, 32, 6, "sdg", 0.001, 20, 0.0001, 0.9, 0.11, 1, 1)
+    ram.save_model("./", "test")
+    print "Model saved..."
+    ram.load_model("./", "test")
+    print "Model loaded..."
 
 
 if __name__ == '__main__':
