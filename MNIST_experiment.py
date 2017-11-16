@@ -47,7 +47,7 @@ class Experiment():
 
         if PARAMETERS.LOAD_MODEL:
             if self.ram.load_model(PARAMETERS.MODEL_FILE_PATH, PARAMETERS.MODEL_FILE):
-                logging.info("Loaded model from " + PARAMETERS.MODEL_FILE_PATH + PARAMETERS_MODEL_FILE)
+                logging.info("Loaded model from " + PARAMETERS.MODEL_FILE_PATH + PARAMETERS.MODEL_FILE)
 
         self.train(PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY)
         self.save('./', results_file)
