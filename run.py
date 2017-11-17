@@ -1,5 +1,14 @@
+"""
+Configuration File to Classify the standard MNIST Dataset
+with, using the Recurrent Attention Model, presented in
+
+Mnih, Volodymyr, Nicolas Heess, and Alex Graves.
+"Recurrent models of visual attention."
+Advances in neural information processing systems. 2014.
+
+Author: Sascha Fleer
+"""
 from MNIST_experiment import Experiment
-import numpy as np
 
 class MNIST_DOMAIN_OPTIONS:
     """
