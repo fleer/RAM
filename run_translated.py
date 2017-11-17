@@ -66,7 +66,7 @@ class PARAMETERS:
     #   =========================
 
     #   Number of learning epochs
-    MAX_EPOCHS= 400
+    MAX_EPOCHS= 200
     #   Batch size
     BATCH_SIZE = 20
 
