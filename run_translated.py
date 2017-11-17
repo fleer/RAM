@@ -1,5 +1,14 @@
+"""
+Configuration File to Classify the standard MNIST Dataset
+with, using the Recurrent Attention Model, presented in
+
+Mnih, Volodymyr, Nicolas Heess, and Alex Graves.
+"Recurrent models of visual attention."
+Advances in neural information processing systems. 2014.
+
+Author: Sascha Fleer
+"""
 from MNIST_experiment import Experiment
-import numpy as np
 
 class MNIST_DOMAIN_OPTIONS:
     """
@@ -56,13 +65,18 @@ class PARAMETERS:
     #   experiment
     #   =========================
 
-    #   Number of learning steps
-    MAX_STEPS = 1000000
-    #   Number of times, the current
-    #   Policy should be avaluated
-    NUM_POLICY_CHECKS = 10
+    #   Number of learning epochs
+    MAX_EPOCHS= 400
     #   Batch size
     BATCH_SIZE = 20
+
+    #   =========================
+    #   Save and Load the Model
+    #   =========================
+    LOAD_MODEL = False
+    MODEL_FILE_PATH = './'
+    MODEL_FILE = '001-network'
+
 
     #   =========================
     #   Algorithm specific parameters
@@ -75,26 +89,25 @@ class PARAMETERS:
     #   sgd
     OPTIMIZER = 'sgd'
     # Learning rate alpha
-    LEARNING_RATE = 0.01
+    LEARNING_RATE = 0.001
     # Number of steps the Learning rate should (linearly)
     # decay to MIN_LEARNING_RATE
-    LEARNING_RATE_DECAY = 250000
+    LEARNING_RATE_DECAY = 200
     # Minimal Learning Rate
     MIN_LEARNING_RATE = 0.00001
     # Momentum
     MOMENTUM = 0.9
-    #Discount factor gamma
-    DISCOUNT = 0.95
     # Clipnorm
-    CLIPNORM = 0 #-1
+    CLIPNORM = 0
     # Clipvalue
-    CLIPVALUE = 0 #-1
+    CLIPVALUE = 0
+
 
 def main():
     params = PARAMETERS
     dom_opt = MNIST_DOMAIN_OPTIONS
-    for i in range(1, 4):
-        exp = Experiment(params, dom_opt, "./{0:03}".format(i) + "-results.json")
+    for i in range(1, 2):
+        exp = Experiment(params, dom_opt, "{0:03}".format(i) + "-results.json", "{0:03}".format(i) + "-network")
         del exp
 
 
