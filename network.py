@@ -1,18 +1,33 @@
 import keras
 from keras import backend as K
-from keras import layers
 import numpy as np
 import os
-from collections import defaultdict
 
 class RAM():
+    """
+    Neural Network class, that uses KERAS to build and trains the Recurrent Attention Model
+    """
 
-    glimpses = 6
+
     def __init__(self, totalSensorBandwidth, batch_size, glimpses, optimizer,
                  lr, lr_decay, min_lr, momentum, loc_std, clipnorm, clipvalue):
+        """
+        Intialize parameters, determine the learning rate decay and build the RAM
+        :param totalSensorBandwidth: The length of the networks input vector
+                                    ---> nZooms * sensorResolution * sensorResolution * channels
+        :param batch_size: Size of each batch
+        :param glimpses: Number of glimpses the model executes on each image
+        :param optimizer: The used optimize: "sgd, rmsprop, adadelta, adam,..."
+        :param lr: The learning rate at epoch e=0
+        :param lr_decay: Number of epochs after which the learning rate has linearly
+                        decayed to min_lr
+        :param min_lr: minimal learning rate
+        :param momentum: should momentum be used
+        :param loc_std: standard deviation of location policy
+        :param clipnorm: Gradient clipping
+        :param clipvalue: Gradient clipping
+        """
 
-        # TODO --> Integrate Discount Factor for Reward
-        self.discounted_r = np.zeros((batch_size, 1))
         self.output_dim = 10
         self.totalSensorBandwidth = totalSensorBandwidth
         self.batch_size = batch_size
@@ -26,10 +41,27 @@ class RAM():
             self.lr_decay_rate = ((lr - min_lr) /
                                  lr_decay)
 
+        # Create the network
         self.big_net(optimizer, lr, momentum, clipnorm, clipvalue)
 
 
     def big_net(self, optimizer, lr, momentum, clipnorm, clipvalue):
+        """
+        Function to create the Recurrent Attention Model and compile it for the different
+        Loss Functions
+        :param optimizer: The used optimize: "sgd, rmsprop, adadelta, adam,..."
+        :param lr: The learning rate at epoch e=0
+        :param momentum: should momentum be used
+        :param clipnorm: Gradient clipping
+        :param clipvalue: Gradient clipping
+        :return: None
+        """
+
+        #   ================
+        #   Glimpse Network
+        #   ================
+
+        # Build the glimpse input
         glimpse_model_i = keras.layers.Input(batch_shape=(self.batch_size, self.totalSensorBandwidth),
                                              name='glimpse_input')
         glimpse_model = keras.layers.Dense(128, activation='relu',
@@ -44,6 +76,7 @@ class RAM():
                                                name='glimpse_3'
                                                )(glimpse_model)
 
+        # Build the location input
         location_model_i = keras.layers.Input(batch_shape=(self.batch_size, 2),
                                               name='location_input')
 
@@ -63,19 +96,28 @@ class RAM():
         model_merge = keras.layers.add([glimpse_model_out, location_model_out], name='add')
         glimpse_network_output  = keras.layers.Lambda(lambda x: K.relu(x))(model_merge)
 
+        #   ================
+        #   Core Network
+        #   ================
         rnn_input = keras.layers.Reshape((256,1))(glimpse_network_output)
         model_output = keras.layers.recurrent.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',
                                                 return_sequences=False, stateful=True, unroll=True,
                                                 kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                                 bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                                 name = 'rnn')(rnn_input)
-
+        #   ================
+        #   Action Network
+        #   ================
         action_out = keras.layers.Dense(10,
                                  activation='softmax',
                                  kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  name='action_output',
                                  )(model_output)
+        #   ================
+        #   Location Network
+        #   ================
+
         location_out = keras.layers.Dense(2,
                                  activation='tanh',
                                  #kernel_initializer=keras.initializers.glorot_uniform(),
@@ -84,6 +126,9 @@ class RAM():
                                 # bias_initializer=keras.initializers.glorot_uniform(),
                                  name='location_output',
                                  )(model_output)
+        #   ================
+        #   Baseline Network
+        #   ================
         baseline_output = keras.layers.Dense(1,
                                  activation='sigmoid',
                                #  kernel_initializer=keras.initializers.glorot_uniform(),
@@ -92,9 +137,10 @@ class RAM():
                                  name='baseline_output',
                                          )(model_output)
 
+        # Create the model
         self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out, baseline_output])
 
-
+        # Compile the model
         if optimizer == "rmsprop":
             self.ram.compile(optimizer=keras.optimizers.rmsprop(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
                              loss={'action_output': self.CROSS_ENTROPY,
@@ -118,12 +164,43 @@ class RAM():
         else:
             raise ValueError("Unrecognized update: {}".format(optimizer))
 
+        # Print Summary
+        self.ram.summary()
+
     def CROSS_ENTROPY(self, y_true, y_pred):
+        """
+        Standard CrossEntropy Loss
+        :param y_true: True Value
+        :param y_pred: Network Prediction
+        :return: Loss
+        """
       #  self.ram.trainable = True
         return K.categorical_crossentropy(y_true, y_pred)
 
     def REINFORCE_LOSS(self, action_p, baseline):
+        """
+        :param action_p: Network output of action network
+        :param baseline: Network putput of baseline network
+        :return: Loss, based on REINFORCE algorithm for the normal
+                distribution
+        """
         def loss(y_true, y_pred):
+            """
+            REINFORCE algorithm for Normal Distribution
+            Used for location network loss
+            -------
+            Williams, Ronald J. "Simple statistical gradient-following
+            algorithms for connectionist reinforcement learning."
+            Machine learning 8.3-4 (1992): 229-256.
+            -------
+
+            Here, some tricks are used to get the desired result...
+            :param y_true:  One-Hot Encoding of correct Action
+            :param y_pred: Output of Location Network --> Mean of the Normal distribution
+            :return: Loss, based on REINFORCE algorithm for the normal
+                     distribution
+            """
+            # Compute Predicted and Correct action values
             max_p_y = K.argmax(action_p)
             action = K.argmax(y_true)
 
@@ -132,6 +209,7 @@ class RAM():
             R = K.cast(R, 'float32')
             R_out = K.reshape(R, (self.batch_size,1))
 
+            #Uses the REINFORCE algorithm in sec 6. p.237-239)
             # Individual loss for location network
             # Compute loss via REINFORCE algorithm
             # for gaussian distribution
@@ -139,8 +217,9 @@ class RAM():
             # -------------- = -------- with m = mean, x = sample, s = standard_deviation
             #       d m          s**2
 
+            #Sample Location, based on current mean
             sample_loc = K.random_normal(y_pred.shape, y_pred, self.loc_std)
-            #sample_loc = K.tanh(sample_loc)
+
             #TODO: Check how to deal with the 2 dims (x,y) of location
             R = K.tile(R_out, [1, 2])
             b = K.tile(baseline, [1, 2])
@@ -151,7 +230,21 @@ class RAM():
         return loss
 
     def BASELINE_LOSS(self, action_p):
+        """
+        :param action_p: Network output of action network
+        :return: Baseline Loss
+        """
         def loss(y_true, y_pred):
+            """
+            The baseline is trained with mean-squared-error
+            The only difficulty is to use the current reward
+            as the true value
+
+            :param y_true:  One-Hot Encoding of correct Action
+            :param y_pred:  Output of Baseline Network
+            :return: Baseline Loss
+            """
+            # Compute Predicted and Correct action values
             max_p_y = K.argmax(action_p)
             action = K.argmax(y_true)
 
@@ -166,6 +259,11 @@ class RAM():
 
 
     def learning_rate_decay(self):
+        """
+        Function to control the linear decay
+        of the learning rate
+        :return: New learning rate
+        """
         lr = K.get_value(self.ram.optimizer.lr)
         # Linear Learning Rate Decay
         lr = max(self.min_lr, lr - self.lr_decay_rate)
@@ -173,56 +271,39 @@ class RAM():
         return lr
 
     def train(self, zooms, loc_input, true_a):
+        """
+        Train the Model!
+        :param zooms: Current zooms, created using loc_input
+        :param loc_input: Current Location
+        :param true_a: One-Hot Encoding of correct action
+        :return: Average Loss of training step
+        """
       #  self.ram.trainable = True
+
+
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
 
         loss = self.ram.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input},
                                        {'action_output': true_a, 'location_output': true_a, 'baseline_output': true_a})
 
-        #if self.lr_decay !=0:
-        #   lr = self.learning_rate_decay()
-        #else:
-        #   lr = self.lr
-        #self.rnn.set_weights(new_weights)
-        #ath = keras.utils.to_categorical(true_a, self.output_dim)
-        #self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
-        #                        {'action_output': ath, 'location_output': ath}, epochs=1, batch_size=self.batch_size, verbose=1, shuffle=False)
-       # print "--------------------------------------"
-       # print loss
-       # print loss_l
-       # print loss_b
-
         #return loss, loss_l, loss_b, R#, np.mean(b, axis=-1)
         return np.mean(loss)
 
     def reset_states(self):
+        """
+        Reset the hidden state of the Core Network
+        :return:
+        """
         self.ram.reset_states()
 
-    def compute_discounted_R(self, R, discount_rate=.99):
-        """Returns discounted rewards
-        Args:
-            R (1-D array): a list of `reward` at each time step
-            discount_rate (float): Will discount the future value by this rate
-        Returns:
-            discounted_r (1-D array): same shape as input `R`
-                but the values are discounted
-        Examples:
-            >>> R = [1, 1, 1]
-            >>> self.compute_discounted_R(R, .99) # before normalization
-            [1 + 0.99 + 0.99**2, 1 + 0.99, 1]
-        """
-        discounted_r = np.zeros_like(R, dtype=np.float32)
-        running_add = 0
-        print R
-        for t in reversed(range(len(R))):
-            running_add = running_add * discount_rate + R[t]
-            discounted_r[t] = running_add
-
-        discounted_r -= discounted_r.mean() / discounted_r.std()
-
-        return discounted_r
-
     def choose_action(self,X,loc):
+        """
+        Choose action and new location, based on current
+        network state
+        :param X: Current Batch
+        :param loc: New Location
+        :return: Output of Action Network & Location Network
+        """
 
         glimpse_input = np.reshape(X, (self.batch_size, self.totalSensorBandwidth))
         action_prob, loc, _ = self.ram.predict_on_batch({"glimpse_input": glimpse_input, 'location_input': loc})
@@ -233,6 +314,10 @@ class RAM():
         """
         Saves the model to ``model.json`` file and
         also the model weights to model.h5 file
+
+        :param path: Path to file
+        :param filename: Filename
+        :return:
         """
         model_fn = os.path.join(path, filename)
         if not os.path.exists(path):
@@ -246,8 +331,12 @@ class RAM():
 
     def load_model(self, path, filename):
         """
-        Saves the model to ``model.json`` file and
-        also the model weights to model.h5 file
+        Load the model from ``model.json`` file and
+        also the model weights from model.h5 file
+
+        :param path: Path to file
+        :param filename: Filename
+        :return: Loading successfull
         """
         model_fn = os.path.join(path, filename)
         if os.path.isfile(model_fn):
@@ -264,6 +353,10 @@ class RAM():
 
 
 def main():
+    """
+    Test the written Code
+    :return:
+    """
     totalSensorBandwidth = 3 * 8 * 8 * 1
     ram = RAM(totalSensorBandwidth, 32, 6, "sdg", 0.001, 20, 0.0001, 0.9, 0.11, 1, 1)
     ram.save_model("./", "test")
