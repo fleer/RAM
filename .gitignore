@@ -102,3 +102,6 @@ ENV/
 
 # Pycharm Files
 .idea/
+
+# MNIST Data
+mnist_data/

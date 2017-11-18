@@ -4,8 +4,12 @@ import matplotlib.pyplot as plt
 import cv2
 
 class MNIST():
+    """
+    Class for downloading and preprocessing the MNIST image dataset
+    The Code is based on https://github.com/jlindsey15/RAM
+    """
 
-    def __init__(self, mnist_size, batch_size, channels, minRadius, sensorBandwidth,depth, loc_std):
+    def __init__(self, mnist_size, batch_size, channels, minRadius, sensorBandwidth, depth, loc_std, unit_pixels, translate, translated_mnist_size):
 
         self.mnist_size = mnist_size
         self.batch_size = batch_size
@@ -14,26 +18,38 @@ class MNIST():
         self.sensorBandwidth = sensorBandwidth # fixed resolution of sensor
         self.sensorArea = self.sensorBandwidth**2
         self.depth = depth # zooms
+        self.unit_pixels = unit_pixels
         self.dataset = tf_mnist_loader.read_data_sets("mnist_data")
 
         self.loc_std = loc_std # std when setting the location
 
+        self.translate = translate
+        if translate:
+            self.translated_mnist_size = mnist_size
+            self.mnist_size = translated_mnist_size
 
-    # to use for maximum likelihood with glimpse location
-    def gaussian_pdf(self, mean, sample):
-        Z = 1.0 / (self.loc_std * np.sqrt(2.0 * np.math.pi))
-        a = -np.square(np.asarray(sample) - np.asarray(mean)) / (2.0 * np.square(self.loc_std))
-        return Z * np.exp(a)
+    def get_batch_train(self, batch_size):
+        X, Y = self.dataset.train.next_batch(batch_size)
+        if self.translate:
+           X, _ = self.convertTranslated(X, self.translated_mnist_size, self.mnist_size)
+        return X,Y
 
-    def get_batch(self, batch_size):
+    def get_batch_test(self, batch_size):
         X, Y = self.dataset.test.next_batch(batch_size)
+        if self.translate:
+            X, _ = self.convertTranslated(X, self.translated_mnist_size, self.mnist_size)
         return X,Y
 
     def glimpseSensor(self, img, normLoc):
         assert not np.any(np.isnan(normLoc))," Locations have to be between 1, -1: {}".format(normLoc)
         assert np.any(np.abs(normLoc)<=1)," Locations have to be between 1, -1: {}".format(normLoc)
 
-        loc = ((normLoc + 1) / 2) * self.mnist_size # normLoc coordinates are between -1 and 1
+        #loc = np.around(((normLoc + 1) / 2.0) * self.mnist_size) # normLoc coordinates are between -1 and 1
+        loc = normLoc * (self.unit_pixels * 2.)/ self.mnist_size # normLoc coordinates are between -1 and 1
+        # Convert location [-1,1] into MNIST Coordinates:
+        loc = np.around(((loc + 1) / 2.0) * self.mnist_size) # normLoc coordinates are between -1 and 1
+        #print "Default: {}".format(loc)
+        #print "unit Pixels: {}".format(loc1)
         loc = loc.astype(np.int32)
 
         img = np.reshape(img, (self.batch_size, self.mnist_size, self.mnist_size, self.channels))
@@ -44,7 +60,7 @@ class MNIST():
         for k in xrange(self.batch_size):
             imgZooms = []
             one_img = img[k,:,:,:]
-            max_radius = self.minRadius * (2 ** (self.depth - 1))
+            max_radius = self.mnist_size * (self.minRadius ** (self.depth - 1))
             offset = 2 * max_radius
 
             # pad image with zeros
@@ -52,7 +68,7 @@ class MNIST():
                 max_radius * 4 + self.mnist_size, max_radius * 4 + self.mnist_size)
 
             for i in xrange(self.depth):
-                r = int(self.minRadius * (2 ** (i - 1)))
+                r = int(self.mnist_size * (self.minRadius ** (i - 1)))
 
                 d_raw = 2 * r
                 d = np.reshape(np.asarray(d_raw), [1])
@@ -75,7 +91,7 @@ class MNIST():
 
                 # resize cropped image to (sensorBandwidth x sensorBandwidth)
                 zoom = cv2.resize(zoom, (self.sensorBandwidth, self.sensorBandwidth),
-                      interpolation=cv2.INTER_LINEAR)
+                      interpolation=cv2.INTER_AREA)#INTER_LINEAR)
                 zoom = np.reshape(zoom, (self.sensorBandwidth, self.sensorBandwidth))
                 imgZooms.append(zoom)
 
@@ -152,53 +168,80 @@ class MNIST():
 
         return padded
 
+    def convertTranslated(self, images, initImgSize, finalImgSize):
+        size_diff = finalImgSize - initImgSize
+        newimages = np.zeros([self.batch_size, finalImgSize*finalImgSize])
+        imgCoord = np.zeros([self.batch_size,2])
+        for k in xrange(self.batch_size):
+            image = images[k, :]
+            image = np.reshape(image, (initImgSize, initImgSize))
+            # generate and save random coordinates
+            randX = np.random.randint(0, size_diff)
+            randY = np.random.randint(0, size_diff)
+            imgCoord[k,:] = np.array([randX, randY])
+            # padding
+            image = np.lib.pad(image, ((randX, size_diff - randX), (randY, size_diff - randY)), 'constant', constant_values = (0))
+            newimages[k, :] = np.reshape(image, (finalImgSize*finalImgSize))
 
+        return newimages, imgCoord
 
 def main():
-    mnist = MNIST()
+    """
+    Test script for checking the image preprocessing
+    and to print example images
+    :return:
+    """
+    #Standard MNIST
+    #mnist = MNIST(28, 4, 1, 2, 8, 1, 0.11 ,13 ,False , 60)
+
+    #Translated MNIST
+    mnist = MNIST(28, 4, 1, 2, 12, 1, 0.11, 26, True, 60)
+
     mnist_size = mnist.mnist_size
     batch_size = mnist.batch_size
     channels = 1 # grayscale
+    glimpses = 4
 
-    minRadius = 4 # zooms -> minRadius * 2**<depth_level>
-    sensorBandwidth = 8 # fixed resolution of sensor
-    sensorArea = sensorBandwidth**2
-    depth = 1 # zooms
-    X, Y= mnist.get_batch(batch_size)
-    #mnist.glimpseSensor(X, )
+    save = False
+    X, Y= mnist.get_batch_test(batch_size)
 
 
     img = np.reshape(X, (batch_size, mnist_size, mnist_size, channels))
-    fig = plt.figure()
     plt.ion()
     plt.show()
 
-    initial_loc = np.random.uniform(-1, 1,(batch_size, 2))
-
-    zooms = mnist.glimpseSensor(X, initial_loc)
+    zooms = [mnist.glimpseSensor(X, np.random.uniform(-1, 1,(batch_size, 2))) for x in range(glimpses)]
 
     for k in xrange(batch_size):
         one_img = img[k,:,:,:]
-        max_radius = minRadius * (2 ** (depth - 1))
-        offset = max_radius
-        one_img = mnist.pad_to_bounding_box(one_img, offset, offset,
-                                            max_radius * 2 + mnist_size, max_radius * 2 + mnist_size)
 
         plt.title(Y[k], fontsize=40)
         plt.imshow(one_img[:,:,0], cmap=plt.get_cmap('gray'),
                    interpolation="nearest")
-
         plt.draw()
         #time.sleep(0.05)
+        if save:
+            plt.savefig("letter_" + repr(k) + ".png")
         plt.pause(1.0001)
 
-        for z in zooms[k]:
-            plt.imshow(z[:,:], cmap=plt.get_cmap('gray'),
-                   interpolation="nearest")
+        ng = 1
+        nz = 1
+        for g in zooms:
+            #for z in zooms[k]:
+            for z in g[k]:
+                plt.imshow(z[:,:], cmap=plt.get_cmap('gray'),
+                       interpolation="nearest")
 
-            plt.draw()
-            #time.sleep(0.05)
-            plt.pause(1.0001)
+                plt.draw()
+                if save:
+                    plt.savefig("letter_" + repr(k) +
+                                "glimpse_" + repr(ng) +
+                                "zoom_" + repr(nz) + ".png")
+                #time.sleep(0.05)
+                plt.pause(1.0001)
+                nz += 1
+            ng += 1
+
 
 if __name__ == '__main__':
     main()
