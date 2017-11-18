@@ -46,7 +46,7 @@ The plot below shows the training accuracy for the first 400 epochs:
 ![Example](./MNIST_Results/MNIST_accuracy.png)
 
 ### Examples Images
-To create images of the glimpses that the network uses after training, simply execute the evaluation script `evaluate_MNIST.py`.
+To create images of the glimpses that the network uses after training, simply execute the evaluation script `evaluate.py run_mnist`.
 
 |Originial Image | Glimpse 0| Glimpse 1| Glimpse 2 |Glimpse 3|
 |:--:|:--:|:--:|:--:|:--:|

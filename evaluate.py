@@ -1,5 +1,20 @@
-from run_mnist import MNIST_DOMAIN_OPTIONS
-from run_mnist import PARAMETERS
+import sys
+
+# This is not a nice way to implement the different configuration scripts...
+if len(sys.argv) > 1:
+    if sys.argv[1] is 'run_mnist':
+        from run_mnist import MNIST_DOMAIN_OPTIONS
+        from run_mnist import PARAMETERS
+    elif sys.argv[1] is 'run_translated_mnist':
+        from run_translated_mnist import MNIST_DOMAIN_OPTIONS
+        from run_translated_mnist import PARAMETERS
+    else:
+        print "Wrong file name!"
+        sys.exit(0)
+else:
+    print "Give Configuration File as additional argument! \n " \
+          "E.g. python evaluate.py run_mnist"
+    sys.exit(0)
 
 from network import RAM
 from MNIST_Processing import MNIST
@@ -7,7 +22,8 @@ from MNIST_Processing import MNIST
 from matplotlib import pyplot as plt
 import numpy as np
 
-save = True
+
+save = False
 
 mnist_size = MNIST_DOMAIN_OPTIONS.MNIST_SIZE
 channels = MNIST_DOMAIN_OPTIONS.CHANNELS
