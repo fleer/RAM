@@ -74,7 +74,7 @@ class PARAMETERS:
     #   Save and Load the Model
     #   =========================
     LOAD_MODEL = False
-    MODEL_FILE_PATH = './'
+    MODEL_FILE_PATH = './MNIST_Results/'
     MODEL_FILE = '001-network'
 
 

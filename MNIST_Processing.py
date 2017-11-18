@@ -9,7 +9,7 @@ class MNIST():
     The Code is based on https://github.com/jlindsey15/RAM
     """
 
-    def __init__(self, mnist_size, batch_size, channels, minRadius, sensorBandwidth,depth, loc_std, unit_pixels, translate, translated_mnist_size):
+    def __init__(self, mnist_size, batch_size, channels, minRadius, sensorBandwidth, depth, loc_std, unit_pixels, translate, translated_mnist_size):
 
         self.mnist_size = mnist_size
         self.batch_size = batch_size
@@ -186,47 +186,46 @@ class MNIST():
         return newimages, imgCoord
 
 def main():
-    mnist = MNIST(28,4,1,2,6,1,0.11, 13, True, 60)
+    """
+    Test script for checking the image preprocessing
+    and to print example images
+    :return:
+    """
+    #Standard MNIST
+    #mnist = MNIST(28, 4, 1, 2, 8, 1, 0.11 ,13 ,False , 60)
+
+    #Translated MNIST
+    mnist = MNIST(28, 4, 1, 2, 12, 1, 0.11, 26, True, 60)
+
     mnist_size = mnist.mnist_size
     batch_size = mnist.batch_size
     channels = 1 # grayscale
-
-    minRadius = 4 # zooms -> minRadius * 2**<depth_level>
-    sensorBandwidth = 8 # fixed resolution of sensor
-    sensorArea = sensorBandwidth**2
-    depth = 1 # zooms
-
     glimpses = 4
+
+    save = False
     X, Y= mnist.get_batch_test(batch_size)
-    #mnist.glimpseSensor(X, )
 
 
     img = np.reshape(X, (batch_size, mnist_size, mnist_size, channels))
-    fig = plt.figure()
     plt.ion()
     plt.show()
 
-    #initial_loc = np.random.uniform(-1, 1,(batch_size, 2))
-
-#    zooms = mnist.glimpseSensor(X, initial_loc)
     zooms = [mnist.glimpseSensor(X, np.random.uniform(-1, 1,(batch_size, 2))) for x in range(glimpses)]
 
     for k in xrange(batch_size):
         one_img = img[k,:,:,:]
-        max_radius = mnist_size * (minRadius ** (depth - 1))
-        offset = max_radius
-
-        one_img = mnist.pad_to_bounding_box(one_img, offset, offset,
-                                            max_radius * 2 + mnist_size, max_radius * 2 + mnist_size)
 
         plt.title(Y[k], fontsize=40)
         plt.imshow(one_img[:,:,0], cmap=plt.get_cmap('gray'),
                    interpolation="nearest")
-
         plt.draw()
         #time.sleep(0.05)
+        if save:
+            plt.savefig("letter_" + repr(k) + ".png")
         plt.pause(1.0001)
 
+        ng = 1
+        nz = 1
         for g in zooms:
             #for z in zooms[k]:
             for z in g[k]:
@@ -234,8 +233,15 @@ def main():
                        interpolation="nearest")
 
                 plt.draw()
+                if save:
+                    plt.savefig("letter_" + repr(k) +
+                                "glimpse_" + repr(ng) +
+                                "zoom_" + repr(nz) + ".png")
                 #time.sleep(0.05)
                 plt.pause(1.0001)
+                nz += 1
+            ng += 1
+
 
 if __name__ == '__main__':
     main()

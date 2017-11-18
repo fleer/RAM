@@ -1,4 +1,4 @@
-from MNIST_Domain import MNIST
+from MNIST_Processing import MNIST
 from network import RAM
 import numpy as np
 import keras
@@ -21,7 +21,7 @@ class Experiment():
     results = defaultdict(list)
 
 
-    def __init__(self, PARAMETERS, DOMAIN_OPTIONS, results_file="results0.json", model_file=None):
+    def __init__(self, PARAMETERS, DOMAIN_OPTIONS, results_file="001-results.json", model_file="001-network"):
 
         logging.basicConfig(level=logging.INFO)
 
