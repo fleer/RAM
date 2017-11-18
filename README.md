@@ -20,15 +20,34 @@ Install the packages via `pip`.
 pip install numpy tensorflow keras opencv-python matplotlib h5py
 ```
 
+## Usage
+The parameter for the training are all defined in the configuration file, 
+such as `run_mnist.py`.
+There all parameters of the network, such as number of glimpses, number of zooms, 
+optimizer, learning rate, etc. can be specified.
+
+In the `main()` function, the number of runs can be specified, together with the 
+filename of the results `.json` file.
+
+After the training for the specified number of epochs, the network-model is 
+saved as a `.h5py` file, while the trained weights are saved as `.json` file.
+They can be loaded for further training or evaluation.
+
 ## Classification of the standard MNIST Dataset
 To Train the network for classifying the standard MNIST Dataset, 
 start the code via the corresponding confiuration file:
 ```
 python run_mnist.py
 ```
+The chosen parameters are nearly the same as in [3].
 
 The plot below shows the training accuracy for the first 400 epochs:
 ![Example](./MNIST_Results/MNIST_accuracy.png)
+
+Examples
+
+
+|<img src="./MNIST_Results/Images/symbol_0.png" alt="Symbol0" style="width: 28px;"/>||<img src="./MNIST_Results/Images/symbol_0_glimpse_0_zoom_1.png" alt="Glimpse0" style="width: 28px;"/>||<img src="./MNIST_Results/Images/symbol_0_glimpse_1_zoom_1.png" alt="Glimpse1" style="width: 28px;"/>||<img src="./MNIST_Results/Images/symbol_0_glimpse_2_zoom_1.png" alt="Glimpse2" style="width: 28px;"/>||<img src="./MNIST_Results/Images/symbol_0_glimpse_3_zoom_1.png" alt="Glimpse3" style="width: 28px;"/>|
 
 ## Classification of the translated MNIST Dataset
 To Train the network for classifying the translated MNIST Dataset, 
@@ -36,6 +55,7 @@ start the code via the corresponding confiuration file:
 ```
 python run_translated_mnist.py
 ```
+The chosen parameters are nearly the same as in [3].
 
 
 --------

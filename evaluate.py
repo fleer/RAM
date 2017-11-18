@@ -66,8 +66,8 @@ for n in range(nGlimpses):
 
             plt.draw()
             if save:
-                plt.savefig("symbol_" + repr(g) +
-                            "glimpse_" + repr(n) +
+                plt.savefig("symbol_" + repr(g) + "_" +
+                            "glimpse_" + repr(n) + "_" +
                             "zoom_" + repr(nz) + ".png")
             #time.sleep(0.05)
             plt.pause(1.0001)
