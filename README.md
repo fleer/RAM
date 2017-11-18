@@ -47,7 +47,7 @@ The plot below shows the training accuracy for the first 400 epochs:
 Examples
 
 
-|<img src="./MNIST_Results/Images/symbol_0.png" alt="Symbol0" style="width: 28px;"/>||<img src="./MNIST_Results/Images/symbol_0_glimpse_0_zoom_1.png" alt="Glimpse0" style="width: 28px;"/>||<img src="./MNIST_Results/Images/symbol_0_glimpse_1_zoom_1.png" alt="Glimpse1" style="width: 28px;"/>||<img src="./MNIST_Results/Images/symbol_0_glimpse_2_zoom_1.png" alt="Glimpse2" style="width: 28px;"/>||<img src="./MNIST_Results/Images/symbol_0_glimpse_3_zoom_1.png" alt="Glimpse3" style="width: 28px;"/>|
+|<img src="./MNIST_Results/Images/symbol_0.png" alt="Symbol0" width="28">||<img src="./MNIST_Results/Images/symbol_0_glimpse_0_zoom_1.png" alt="Glimpse0" style="width: 28px;"/>||<img src="./MNIST_Results/Images/symbol_0_glimpse_1_zoom_1.png" alt="Glimpse1" style="width: 28px;"/>||<img src="./MNIST_Results/Images/symbol_0_glimpse_2_zoom_1.png" alt="Glimpse2" style="width: 28px;"/>||<img src="./MNIST_Results/Images/symbol_0_glimpse_3_zoom_1.png" alt="Glimpse3" style="width: 28px;"/>|
 
 ## Classification of the translated MNIST Dataset
 To Train the network for classifying the translated MNIST Dataset, 
