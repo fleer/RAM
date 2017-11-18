@@ -71,9 +71,9 @@ sample_loc = np.tanh(np.random.normal(loc, loc_std, loc.shape))
 for n in range(nGlimpses):
     zooms = mnist.glimpseSensor(X,sample_loc)
     ng = 1
-    nz = 1
     #for g in zooms:
     for g in range(batch_size):
+        nz = 1
         plt.title(Y[g], fontsize=40)
         for z in zooms[g]:
         #for z in g:
