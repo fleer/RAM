@@ -1,6 +1,11 @@
 # A Keras implementation of the Recurrent Attention Model
 
-The **Recurrent Attention Model**...
+The **Recurrent Attention Model** is introduced in [1]. It is inspired by the way humans percieve
+their sourroundings. Instead of observing the whole scene, humans focus on selective parts of the 
+environment and accuire information.
+
+It is based as an alternative approch to image processing using convolutional 
+neural networks.
 Instead processing the whole image, it uses *glimpses* at different locations to classify the given symbols.
 
 The code is inspired by [2] & [3]
