@@ -1,18 +1,18 @@
 # A Keras implementation of the Recurrent Attention Model
 
 The **Recurrent Attention Model**...
-Instead processing the whole image, it uses *glimpses* at different locations.
+Instead processing the whole image, it uses *glimpses* at different locations to classify the given symbols.
 
 The code is inspired by [2] & [3]
 
 ## Installation
-Needed packages:
+**Required packages:**
 1. [numpy](http://www.numpy.org/)
 2. [tensorflow](https://www.tensorflow.org/)
 3. [Keras](https://keras.io/)
 4. [opencv](https://opencv.org/)
 5. [matplotlib](http://matplotlib.org/) for plotting
-6. [h5py](http://www.h5py.org/)
+6. [h5py](http://www.h5py.org/) for saving the trained network weights
 
 Install the packages via `pip`.
 
@@ -33,6 +33,19 @@ After the training for the specified number of epochs, the network-model is
 saved as a `.h5py` file, while the trained weights are saved as `.json` file.
 They can be loaded for further training or evaluation.
 
+## Evaluation
+To create images of the glimpses that the network uses after training, simply execute the evaluation script.
+E.g.
+```
+evaluate.py run_mnist
+```
+
+To plot the accuary of the classification over the number of trained epochs use the plotting script. 
+E.g. 
+```
+python plot.py ./001-results.json
+```
+
 ## Classification of the standard MNIST Dataset
 To Train the network for classifying the standard MNIST Dataset, 
 start the code via the corresponding confiuration file:
@@ -41,12 +54,11 @@ python run_mnist.py
 ```
 The chosen parameters are nearly the same as in [3].
 
-### Results
-The plot below shows the training accuracy for the first 400 epochs:
+The plot below shows the training accuracy for the first 400 epochs. 
+ Additionally, examples of the images and the glimpses used by the network are diaplyed.
 ![Example](./MNIST_Results/MNIST_accuracy.png)
 
-### Examples Images
-To create images of the glimpses that the network uses after training, simply execute the evaluation script `evaluate.py run_mnist`.
+
 
 |Originial Image | Glimpse 0| Glimpse 1| Glimpse 2 |Glimpse 3|
 |:--:|:--:|:--:|:--:|:--:|

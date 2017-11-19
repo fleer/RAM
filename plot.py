@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import os
+import sys
 import json
 import numpy as np
 
@@ -15,11 +16,20 @@ def load_single(filename):
     return result
 
 
+# This is not a nice way to implement the different configuration scripts...
+if len(sys.argv) > 1:
+    file = load_single('./MNIST_Results/001-results.json')
+    if file is None:
+        print "Wrong file name!"
+        sys.exit(0)
+else:
+    print "Give Results-File as additional argument! \n " \
+          "E.g. python plot.py ./001-results.json"
+    sys.exit(0)
 
 style = {
     "linewidth": 2, "alpha": .7, "linestyle": "-", "markersize": 7}
 
-file = load_single('./MNIST_Results/001-results.json')
 
 x = np.arange(len(file['accuracy']))
 y_mean = np.asarray(file['accuracy'])
