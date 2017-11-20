@@ -44,12 +44,9 @@ class MNIST():
         assert not np.any(np.isnan(normLoc))," Locations have to be between 1, -1: {}".format(normLoc)
         assert np.any(np.abs(normLoc)<=1)," Locations have to be between 1, -1: {}".format(normLoc)
 
-        #loc = np.around(((normLoc + 1) / 2.0) * self.mnist_size) # normLoc coordinates are between -1 and 1
         loc = normLoc * (self.unit_pixels * 2.)/ self.mnist_size # normLoc coordinates are between -1 and 1
         # Convert location [-1,1] into MNIST Coordinates:
         loc = np.around(((loc + 1) / 2.0) * self.mnist_size) # normLoc coordinates are between -1 and 1
-        #print "Default: {}".format(loc)
-        #print "unit Pixels: {}".format(loc1)
         loc = loc.astype(np.int32)
 
         img = np.reshape(img, (self.batch_size, self.mnist_size, self.mnist_size, self.channels))
@@ -79,7 +76,6 @@ class MNIST():
                 # crop image to (r x r)
                 zoom = one_img2[adjusted_loc[0]:adjusted_loc[0]+r, adjusted_loc[1]:adjusted_loc[1]+r]
                 assert not np.any(np.equal(zoom.shape, (0,0))), "Picture has size 0, location {}, depth {}".format(adjusted_loc, d)
-                #zoom = np.reshape(zoom, (1, d_raw, d_raw, 1))
 
                 # resize cropped image to (sensorBandwidth x sensorBandwidth)
                 zoom = cv2.resize(zoom, (self.sensorBandwidth, self.sensorBandwidth),
