@@ -370,6 +370,7 @@ class RAM():
                                        'baseline_output': self.BASELINE_LOSS(action_p=self.ram.get_layer("action_output").output)})
             else:
                 raise ValueError("Unrecognized update: {}".format(optimizer))
+
             self.ram.summary()
             return True
         else:

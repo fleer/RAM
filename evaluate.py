@@ -1,29 +1,29 @@
 import sys
-
-# This is not a nice way to implement the different configuration scripts...
-if len(sys.argv) > 1:
-    if sys.argv[1] is 'run_mnist':
-        from run_mnist import MNIST_DOMAIN_OPTIONS
-        from run_mnist import PARAMETERS
-    elif sys.argv[1] is 'run_translated_mnist':
-        from run_translated_mnist import MNIST_DOMAIN_OPTIONS
-        from run_translated_mnist import PARAMETERS
-    else:
-        print "Wrong file name!"
-        sys.exit(0)
-else:
-    print "Give Configuration File as additional argument! \n " \
-          "E.g. python evaluate.py run_mnist"
-    sys.exit(0)
-
 from network import RAM
 from MNIST_Processing import MNIST
-
 from matplotlib import pyplot as plt
 import numpy as np
 
+# This is not a nice way to implement the different configuration scripts...
+if len(sys.argv) > 2:
+    if sys.argv[1] == 'run_mnist':
+        from run_mnist import MNIST_DOMAIN_OPTIONS
+        from run_mnist import PARAMETERS
+    elif sys.argv[1] == 'run_translated_mnist':
+        from run_translated_mnist import MNIST_DOMAIN_OPTIONS
+        from run_translated_mnist import PARAMETERS
+    else:
+        print "Wrong file name for confiuration file!"
+        sys.exit(0)
+else:
+    print "Give Configuration File as additional argument! \n " \
+          "E.g. python evaluate.py run_mnist ./model/001-network"
+    sys.exit(0)
 
-save = False
+
+
+
+save = True
 
 mnist_size = MNIST_DOMAIN_OPTIONS.MNIST_SIZE
 channels = MNIST_DOMAIN_OPTIONS.CHANNELS
@@ -34,20 +34,25 @@ nZooms = MNIST_DOMAIN_OPTIONS.NZOOMS
 nGlimpses = MNIST_DOMAIN_OPTIONS.NGLIMPSES
 
 #Reduce the batch size for evaluatoin
-batch_size = 2 #PARAMETERS.BATCH_SIZE
+batch_size = PARAMETERS.BATCH_SIZE
 
 totalSensorBandwidth = nZooms * sensorResolution * sensorResolution * channels
 mnist = MNIST(mnist_size, batch_size, channels, minRadius, sensorResolution,
                    nZooms, loc_std, MNIST_DOMAIN_OPTIONS.UNIT_PIXELS,
                    MNIST_DOMAIN_OPTIONS.TRANSLATE, MNIST_DOMAIN_OPTIONS.TRANSLATED_MNIST_SIZE)
+
 ram = RAM(totalSensorBandwidth, batch_size, nGlimpses,
-               PARAMETERS.OPTIMIZER, PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY,
-               PARAMETERS.MIN_LEARNING_RATE, PARAMETERS.MOMENTUM,
-               MNIST_DOMAIN_OPTIONS.LOC_STD, PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE)
+               PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY,
+               PARAMETERS.MIN_LEARNING_RATE, MNIST_DOMAIN_OPTIONS.LOC_STD)
 
-ram.load_model(PARAMETERS.MODEL_FILE_PATH, PARAMETERS.MODEL_FILE)
-print("Loaded model from " + PARAMETERS.MODEL_FILE_PATH + PARAMETERS.MODEL_FILE)
-
+if ram.load_model('./', sys.argv[2], PARAMETERS.OPTIMIZER,PARAMETERS.LEARNING_RATE,PARAMETERS.MOMENTUM,
+                       PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE):
+    print("Loaded model from " + sys.argv[2] +
+                 ".json and " + sys.argv[2] + ".h5!")
+else:
+    print("Model from " + sys.argv[2] +
+                 " could not be loaded!")
+    sys.exit(0)
 
 plt.ion()
 plt.show()

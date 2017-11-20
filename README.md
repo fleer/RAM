@@ -40,9 +40,9 @@ They can be loaded for further training or evaluation.
 
 ## Evaluation
 To create images of the glimpses that the network uses after training, simply execute the evaluation script.
-E.g.
+The first parameter is the name of the configuration file and the second is the path to the network model & its weights.
 ```
-evaluate.py run_mnist
+evaluate.py run_mnist ./model/001-network
 ```
 
 To plot the accuary of the classification over the number of trained epochs use the plotting script. 
@@ -60,10 +60,10 @@ python run_mnist.py
 The chosen parameters are nearly the same as in [3].
 
 The plot below shows the training accuracy for the first 400 epochs. 
- Additionally, examples of the images and the glimpses used by the network are diaplyed.
+
 ![Example](./MNIST_Results/MNIST_accuracy.png)
 
-
+ Additionally, examples of the images and the glimpses used by the network are diaplyed.
 
 |Originial Image | Glimpse 0| Glimpse 1| Glimpse 2 |Glimpse 3|
 |:--:|:--:|:--:|:--:|:--:|
@@ -78,6 +78,10 @@ python run_translated_mnist.py
 ```
 The chosen parameters are nearly the same as in [3].
 
+
+The plot below shows the training accuracy for the first 200 epochs. 
+
+![Example](./MNIST_Translated_Results/MNIST_accuracy.png)
 
 --------
 [1] Mnih, Volodymyr, Nicolas Heess, and Alex Graves. "Recurrent models of visual attention." Advances in neural information processing systems. 2014.
