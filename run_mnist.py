@@ -1,4 +1,5 @@
 """
+        #for z in g:
 Configuration File to Classify the standard MNIST Dataset
 with, using the Recurrent Attention Model, presented in
 

@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 # This is not a nice way to implement the different configuration scripts...
-if len(sys.argv) > 2:
+if len(sys.argv) > 1:
     if sys.argv[1] == 'run_mnist':
         from run_mnist import MNIST_DOMAIN_OPTIONS
         from run_mnist import PARAMETERS
@@ -42,14 +42,20 @@ ram = RAM(totalSensorBandwidth, batch_size, nGlimpses,
                PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY,
                PARAMETERS.MIN_LEARNING_RATE, MNIST_DOMAIN_OPTIONS.LOC_STD)
 
-if ram.load_model('./', sys.argv[2], PARAMETERS.OPTIMIZER,PARAMETERS.LEARNING_RATE,PARAMETERS.MOMENTUM,
-                       PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE):
-    print("Loaded model from " + sys.argv[2] +
-                 ".json and " + sys.argv[2] + ".h5!")
+if len(sys.argv) > 2:
+    if ram.load_model('./', sys.argv[2], PARAMETERS.OPTIMIZER,PARAMETERS.LEARNING_RATE,PARAMETERS.MOMENTUM,
+                           PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE):
+        print("Loaded model from " + sys.argv[2] +
+                     ".json and " + sys.argv[2] + ".h5!")
+    else:
+        print("Model from " + sys.argv[2] +
+                     " could not be loaded!")
+        sys.exit(0)
 else:
-    print("Model from " + sys.argv[2] +
-                 " could not be loaded!")
-    sys.exit(0)
+    ram.big_net(PARAMETERS.OPTIMIZER,PARAMETERS.LEARNING_RATE,PARAMETERS.MOMENTUM,
+                     PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE)
+    print("No model file provided! New model initialized!")
+
 
 plt.ion()
 plt.show()
