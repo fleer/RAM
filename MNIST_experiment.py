@@ -6,6 +6,7 @@ from collections import defaultdict
 import logging
 import time
 import os
+import sys
 import json
 
 class Experiment():
@@ -41,13 +42,22 @@ class Experiment():
                            self.nZooms, self.loc_std, DOMAIN_OPTIONS.UNIT_PIXELS,
                            DOMAIN_OPTIONS.TRANSLATE, DOMAIN_OPTIONS.TRANSLATED_MNIST_SIZE)
         self.ram = RAM(totalSensorBandwidth, self.batch_size, self.nGlimpses,
-                       PARAMETERS.OPTIMIZER, PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY,
-                       PARAMETERS.MIN_LEARNING_RATE, PARAMETERS.MOMENTUM,
-                       DOMAIN_OPTIONS.LOC_STD, PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE)
+                       PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY,
+                       PARAMETERS.MIN_LEARNING_RATE, DOMAIN_OPTIONS.LOC_STD)
 
         if PARAMETERS.LOAD_MODEL:
-            if self.ram.load_model(PARAMETERS.MODEL_FILE_PATH, PARAMETERS.MODEL_FILE):
-                logging.info("Loaded model from " + PARAMETERS.MODEL_FILE_PATH + PARAMETERS.MODEL_FILE)
+            if self.ram.load_model(PARAMETERS.MODEL_FILE_PATH, PARAMETERS.MODEL_FILE, PARAMETERS.OPTIMIZER,PARAMETERS.LEARNING_RATE,PARAMETERS.MOMENTUM,
+                                PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE):
+                logging.info("Loaded model from " + PARAMETERS.MODEL_FILE_PATH + PARAMETERS.MODEL_FILE +
+                             ".json and " + PARAMETERS.MODEL_FILE_PATH + PARAMETERS.MODEL_FILE + ".h5!")
+            else:
+                logging.info("Model from " + PARAMETERS.MODEL_FILE_PATH + PARAMETERS.MODEL_FILE +
+                             " could not be loaded!")
+                sys.exit(0)
+        else:
+            self.ram.big_net(PARAMETERS.OPTIMIZER,PARAMETERS.LEARNING_RATE,PARAMETERS.MOMENTUM,
+                                PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE)
+
 
         self.train(PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY)
         self.save('./', results_file)

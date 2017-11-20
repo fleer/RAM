@@ -9,8 +9,7 @@ class RAM():
     """
 
 
-    def __init__(self, totalSensorBandwidth, batch_size, glimpses, optimizer,
-                 lr, lr_decay, min_lr, momentum, loc_std, clipnorm, clipvalue):
+    def __init__(self, totalSensorBandwidth, batch_size, glimpses, lr, lr_decay, min_lr, loc_std):
         """
         Intialize parameters, determine the learning rate decay and build the RAM
         :param totalSensorBandwidth: The length of the networks input vector
@@ -42,7 +41,7 @@ class RAM():
                                  lr_decay)
 
         # Create the network
-        self.big_net(optimizer, lr, momentum, clipnorm, clipvalue)
+       # self.big_net(optimizer, lr, momentum, clipnorm, clipvalue)
 
 
     def big_net(self, optimizer, lr, momentum, clipnorm, clipvalue):
@@ -329,7 +328,7 @@ class RAM():
         # serialize weights to HDF5
         self.ram.save_weights(model_fn + ".h5")
 
-    def load_model(self, path, filename):
+    def load_model(self, path, filename, optimizer, lr, momentum, clipnorm, clipvalue):
         """
         Load the model from ``model.json`` file and
         also the model weights from model.h5 file
@@ -339,7 +338,7 @@ class RAM():
         :return: Loading successfull
         """
         model_fn = os.path.join(path, filename)
-        if os.path.isfile(model_fn):
+        if os.path.isfile(model_fn + '.json') and os.path.isfile(model_fn + '.h5'):
             # load json and create model
             json_file = open(model_fn + '.json', 'r')
             loaded_model_json = json_file.read()
@@ -347,6 +346,31 @@ class RAM():
             self.ram = keras.models.model_from_json(loaded_model_json)
             # load weights into new model
             self.ram.load_weights(model_fn + ".h5")
+
+            # Compile the model
+            if optimizer == "rmsprop":
+                self.ram.compile(optimizer=keras.optimizers.rmsprop(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
+                                 loss={'action_output': self.CROSS_ENTROPY,
+                                       'location_output': self.REINFORCE_LOSS(action_p=self.ram.get_layer("action_output").output, baseline=self.ram.get_layer("baseline_output").output),
+                                       'baseline_output': self.BASELINE_LOSS(action_p=self.ram.get_layer("action_output").output)})
+            elif optimizer == "adam":
+                self.ram.compile(optimizer=keras.optimizers.adam(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
+                                 loss={'action_output': self.CROSS_ENTROPY,
+                                       'location_output': self.REINFORCE_LOSS(action_p=self.ram.get_layer("action_output").output, baseline=self.ram.get_layer("baseline_output").output),
+                                       'baseline_output': self.BASELINE_LOSS(action_p=self.ram.get_layer("action_output").output)})
+            elif optimizer == "adadelta":
+                self.ram.compile(optimizer=keras.optimizers.adadelta(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
+                                 loss={'action_output': self.CROSS_ENTROPY,
+                                       'location_output': self.REINFORCE_LOSS(action_p=self.ram.get_layer("action_output").output, baseline=self.ram.get_layer("baseline_output").output),
+                                       'baseline_output': self.BASELINE_LOSS(action_p=self.ram.get_layer("action_output").output)})
+            elif optimizer == 'sgd':
+                self.ram.compile(optimizer=keras.optimizers.SGD(lr=lr, momentum=momentum, nesterov=False, clipvalue=clipvalue, clipnorm=clipnorm),
+                                 loss={'action_output': self.CROSS_ENTROPY,
+                                       'location_output': self.REINFORCE_LOSS(action_p=self.ram.get_layer("action_output").output, baseline=self.ram.get_layer("baseline_output").output),
+                                       'baseline_output': self.BASELINE_LOSS(action_p=self.ram.get_layer("action_output").output)})
+            else:
+                raise ValueError("Unrecognized update: {}".format(optimizer))
+            self.ram.summary()
             return True
         else:
             return False
@@ -361,8 +385,8 @@ def main():
     ram = RAM(totalSensorBandwidth, 32, 6, "sdg", 0.001, 20, 0.0001, 0.9, 0.11, 1, 1)
     ram.save_model("./", "test")
     print "Model saved..."
-    ram.load_model("./", "test")
-    print "Model loaded..."
+    if ram.load_model("./", "test"):
+        print "Model loaded..."
 
 
 if __name__ == '__main__':
