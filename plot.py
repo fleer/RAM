@@ -18,7 +18,7 @@ def load_single(filename):
 
 # This is not a nice way to implement the different configuration scripts...
 if len(sys.argv) > 1:
-    file = load_single('./MNIST_Results/001-results.json')
+    file = load_single(sys.argv[1])
     if file is None:
         print "Wrong file name!"
         sys.exit(0)
