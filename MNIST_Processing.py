@@ -14,7 +14,7 @@ class MNIST():
         self.mnist_size = mnist_size
         self.batch_size = batch_size
         self.channels = channels # grayscale
-        self.minRadius = minRadius # zooms -> minRadius * 2**<depth_level>
+        self.scaling = minRadius # zooms -> scaling * 2**<depth_level>
         self.sensorBandwidth = sensorBandwidth # fixed resolution of sensor
         self.sensorArea = self.sensorBandwidth**2
         self.depth = depth # zooms
@@ -57,15 +57,15 @@ class MNIST():
         for k in xrange(self.batch_size):
             imgZooms = []
             one_img = img[k,:,:,:]
-            max_radius = self.mnist_size * (self.minRadius ** (self.depth - 1))
-            offset = 2 * max_radius
+            offset = int(self.sensorBandwidth* (self.scaling ** (self.depth-1)) / 2.)
 
             # pad image with zeros
             one_img = self.pad_to_bounding_box(one_img, offset, offset, \
-                max_radius * 4 + self.mnist_size, max_radius * 4 + self.mnist_size)
+                offset * 2 + self.mnist_size, offset * 2 + self.mnist_size)
 
             for i in xrange(self.depth):
-                r = int(self.mnist_size * (self.minRadius ** (i - 1)))
+                r = int(self.sensorBandwidth * (self.scaling ** i) / 2.)
+                d = 2*r
 
                 loc_k = loc[k,:]
                 adjusted_loc = offset + loc_k - r
@@ -73,8 +73,8 @@ class MNIST():
                 one_img2 = np.reshape(one_img, (one_img.shape[0],\
                     one_img.shape[1]))
 
-                # crop image to (r x r)
-                zoom = one_img2[adjusted_loc[0]:adjusted_loc[0]+r, adjusted_loc[1]:adjusted_loc[1]+r]
+                # crop image to (d x d)
+                zoom = one_img2[adjusted_loc[0]:adjusted_loc[0]+d, adjusted_loc[1]:adjusted_loc[1]+d]
                 assert not np.any(np.equal(zoom.shape, (0,0))), "Picture has size 0, location {}, depth {}".format(adjusted_loc, d)
 
                 # resize cropped image to (sensorBandwidth x sensorBandwidth)
@@ -180,10 +180,10 @@ def main():
     :return:
     """
     #Standard MNIST
-    mnist = MNIST(28, 4, 1, 2, 8, 1, 0.11 ,13 ,False , 60)
+    #mnist = MNIST(28, 4, 1, 2, 8, 1, 0.11 ,13 ,False , 60)
 
     #Translated MNIST
-    #mnist = MNIST(28, 4, 1, 2, 12, 1, 0.11, 26, True, 60)
+    mnist = MNIST(28, 4, 1, 2, 12, 3, 0.11, 26, True, 60)
 
     mnist_size = mnist.mnist_size
     batch_size = mnist.batch_size

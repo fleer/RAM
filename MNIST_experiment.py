@@ -28,17 +28,17 @@ class Experiment():
 
         mnist_size = DOMAIN_OPTIONS.MNIST_SIZE
         channels = DOMAIN_OPTIONS.CHANNELS
-        minRadius = DOMAIN_OPTIONS.MIN_ZOOM
+        scaling_factor = DOMAIN_OPTIONS.SCALING_FACTOR
         sensorResolution = DOMAIN_OPTIONS.SENSOR
         self.loc_std = DOMAIN_OPTIONS.LOC_STD
-        self.nZooms = DOMAIN_OPTIONS.NZOOMS
+        self.nZooms = DOMAIN_OPTIONS.DEPTH
         self.nGlimpses = DOMAIN_OPTIONS.NGLIMPSES
 
         self.batch_size = PARAMETERS.BATCH_SIZE
         self.max_epochs = PARAMETERS.MAX_EPOCHS
 
         totalSensorBandwidth = self.nZooms * sensorResolution * sensorResolution * channels
-        self.mnist = MNIST(mnist_size, self.batch_size, channels, minRadius, sensorResolution,
+        self.mnist = MNIST(mnist_size, self.batch_size, channels, scaling_factor, sensorResolution,
                            self.nZooms, self.loc_std, DOMAIN_OPTIONS.UNIT_PIXELS,
                            DOMAIN_OPTIONS.TRANSLATE, DOMAIN_OPTIONS.TRANSLATED_MNIST_SIZE)
         self.ram = RAM(totalSensorBandwidth, self.batch_size, self.nGlimpses,

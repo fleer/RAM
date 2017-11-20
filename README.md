@@ -17,12 +17,12 @@ The code is inspired by [3] & [4].
 
 ## Installation
 **Required packages:**
-1. [numpy](http://www.numpy.org/)
-2. [tensorflow](https://www.tensorflow.org/)
+1. [Numpy](http://www.numpy.org/)
+2. [Tensorflow](https://www.tensorflow.org/)
 3. [Keras](https://keras.io/)
-4. [opencv](https://opencv.org/)
-5. [matplotlib](http://matplotlib.org/) for plotting
-6. [h5py](http://www.h5py.org/) for saving the trained network weights
+4. [OpenCv](https://opencv.org/)
+5. [Matplotlib](http://matplotlib.org/) for plotting
+6. [H5Py](http://www.h5py.org/) for saving the trained network weights
 
 Install the packages via `pip`.
 

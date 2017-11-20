@@ -35,10 +35,10 @@ class MNIST_DOMAIN_OPTIONS:
     #
     # Resolution of the Sensor
     SENSOR = 8
-    # Number of zooms
-    NZOOMS = 1
-    # Minimal zoom size # zooms -> mnist_size * (min_zoom **<depth_level>)
-    MIN_ZOOM = 2
+    # Depth of glimpse (depth = 1--> original solution)
+    DEPTH = 1
+    # Scaling Factor of zooms
+    SCALING_FACTOR = 2
     # Number of Glimpses
     NGLIMPSES = 7
     # Standard Deviation of the Location Policy
