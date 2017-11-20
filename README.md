@@ -1,14 +1,19 @@
-# A Keras implementation of the Recurrent Attention Model
+# A Keras implementation of the "Recurrent Attention Model"
 
-The **Recurrent Attention Model** is introduced in [1]. It is inspired by the way humans percieve
-their sourroundings. Instead of observing the whole scene, humans focus on selective parts of the 
-environment and accuire information.
+The **Recurrent Attention Model** (RAM) is introduced in [1]. 
 
-It is based as an alternative approch to image processing using convolutional 
-neural networks.
-Instead processing the whole image, it uses *glimpses* at different locations to classify the given symbols.
+It is inspired by the way humans perceive their surroundings, i.e. focusing on selective parts of the 
+environment to acquire information and combining it, instead of observing the scene in its entirety.
 
-The code is inspired by [2] & [3]
+In [1], the performance of the model is demonstrated by calssifying the [MNIST](http://yann.lecun.com/exdb/mnist/) dataset.
+In contrast to the existing approaches that processes the whole image, the **RAM** uses the information of *glimpses* at selected locations. 
+These *glimpses* are then perceived in a retina-like representation to classify the given symbols.
+
+As suggested in [1], the **action network** is trained by optimizing the cross entropy loss, 
+while the **location network** is trained with reinforcement learning using the REINFORCE [2] learning rule. 
+The **baseline network** is trained by reducing the mean squared error between the baseline and the recieved reward.
+
+The code is inspired by [3] & [4].
 
 ## Installation
 **Required packages:**
@@ -26,15 +31,12 @@ pip install numpy tensorflow keras opencv-python matplotlib h5py
 ```
 
 ## Usage
-The parameter for the training are all defined in the configuration file, 
-such as `run_mnist.py`.
-There all parameters of the network, such as number of glimpses, number of zooms, 
-optimizer, learning rate, etc. can be specified.
+The parameters for the training are all defined in the configuration files 
+`run_mnist.py` and `run_translated_mnist.py`.
 
-In the `main()` function, the number of runs can be specified, together with the 
-filename of the results `.json` file.
+In the `main()` function, the number of distinct training processes can be specified.
 
-After the training for the specified number of epochs, the network-model is 
+After training, the network-model is 
 saved as a `.h5py` file, while the trained weights are saved as `.json` file.
 They can be loaded for further training or evaluation.
 
@@ -45,38 +47,41 @@ The first parameter is the name of the configuration file and the second is the 
 evaluate.py run_mnist ./model/001-network
 ```
 
-To plot the accuary of the classification over the number of trained epochs use the plotting script. 
-E.g. 
+To plot the accuracy of the classification over the number of trained epochs use the plotting script. 
 ```
 python plot.py ./001-results.json
 ```
 
-## Classification of the standard MNIST Dataset
-To Train the network for classifying the standard MNIST Dataset, 
-start the code via the corresponding confiuration file:
+## Classification of the standard MNIST dataset
+To train the network on classifying the standard MNIST dataset, 
+start the training via the corresponding configuration file:
 ```
 python run_mnist.py
 ```
-The chosen parameters are nearly the same as in [3].
+The chosen parameters are nearly the same as in [4].
 
 The plot below shows the training accuracy for the first 400 epochs. 
 
 ![Example](./MNIST_Results/MNIST_accuracy.png)
 
- Additionally, examples of the images and the glimpses used by the network are diaplyed.
+ Examples of the images and the corresponding glimpses used by the network are displayed in the table.
 
 |Originial Image | Glimpse 0| Glimpse 1| Glimpse 2 |Glimpse 3|
 |:--:|:--:|:--:|:--:|:--:|
 |<img src="./MNIST_Results/Images/symbol_0.png" alt="Symbol0" width="140">|<img src="./MNIST_Results/Images/symbol_0_glimpse_0_zoom_1.png" alt="Glimpse0" width="140">|<img src="./MNIST_Results/Images/symbol_0_glimpse_1_zoom_1.png" alt="Glimpse1" width="140">|<img src="./MNIST_Results/Images/symbol_0_glimpse_2_zoom_1.png" alt="Glimpse2" width="140">|<img src="./MNIST_Results/Images/symbol_0_glimpse_3_zoom_1.png" alt="Glimpse3" width="140">|
 |<img src="./MNIST_Results/Images/symbol_1.png" alt="Symbol1" width="140">|<img src="./MNIST_Results/Images/symbol_1_glimpse_0_zoom_1.png" alt="Glimpse0" width="140">|<img src="./MNIST_Results/Images/symbol_1_glimpse_1_zoom_1.png" alt="Glimpse1" width="140">|<img src="./MNIST_Results/Images/symbol_1_glimpse_2_zoom_1.png" alt="Glimpse2" width="140">|<img src="./MNIST_Results/Images/symbol_1_glimpse_3_zoom_1.png" alt="Glimpse3" width="140">|
 
-## Classification of the translated MNIST Dataset
-To Train the network for classifying the translated MNIST Dataset, 
-start the code via the corresponding confiuration file:
+## Classification of the translated MNIST dataset
+In [1], the network is tested on non-centered digits. 
+Therefore, the digits forming the MNIST dataset are incorporated into a
+larger image patch and then randomly translated.  
+
+To train the network on classifying the "translated" MNIST dataset, 
+start the code via the corresponding configuration file:
 ```
 python run_translated_mnist.py
 ```
-The chosen parameters are nearly the same as in [3].
+The chosen parameters are nearly the same as in [4].
 
 
 The plot below shows the training accuracy for the first 200 epochs. 
@@ -86,6 +91,9 @@ The plot below shows the training accuracy for the first 200 epochs.
 --------
 [1] Mnih, Volodymyr, Nicolas Heess, and Alex Graves. "Recurrent models of visual attention." Advances in neural information processing systems. 2014.
 
-[2] https://github.com/jlindsey15/RAM
+[2] Williams, Ronald J. "Simple statistical gradient-following algorithms for connectionist reinforcement learning." Machine learning 8.3-4 (1992): 229-256.
 
-[3] http://torch.ch/blog/2015/09/21/rmva.html
+[3] https://github.com/jlindsey15/RAM
+
+[4] http://torch.ch/blog/2015/09/21/rmva.html
+
