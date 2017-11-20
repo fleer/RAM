@@ -70,24 +70,16 @@ class MNIST():
             for i in xrange(self.depth):
                 r = int(self.mnist_size * (self.minRadius ** (i - 1)))
 
-                d_raw = 2 * r
-                d = np.reshape(np.asarray(d_raw), [1])
-
-                d = np.tile(d, [2])
-
                 loc_k = loc[k,:]
                 adjusted_loc = offset + loc_k - r
-
 
                 one_img2 = np.reshape(one_img, (one_img.shape[0],\
                     one_img.shape[1]))
 
-                # crop image to (d x d)
-                #zoom = slice(one_img2, adjusted_loc, d)
-                zoom = one_img2[adjusted_loc[0]:adjusted_loc[0]+d[0], adjusted_loc[1]:adjusted_loc[1]+d[1]]
+                # crop image to (r x r)
+                zoom = one_img2[adjusted_loc[0]:adjusted_loc[0]+r, adjusted_loc[1]:adjusted_loc[1]+r]
                 assert not np.any(np.equal(zoom.shape, (0,0))), "Picture has size 0, location {}, depth {}".format(adjusted_loc, d)
                 #zoom = np.reshape(zoom, (1, d_raw, d_raw, 1))
-
 
                 # resize cropped image to (sensorBandwidth x sensorBandwidth)
                 zoom = cv2.resize(zoom, (self.sensorBandwidth, self.sensorBandwidth),
@@ -192,10 +184,10 @@ def main():
     :return:
     """
     #Standard MNIST
-    #mnist = MNIST(28, 4, 1, 2, 8, 1, 0.11 ,13 ,False , 60)
+    mnist = MNIST(28, 4, 1, 2, 8, 1, 0.11 ,13 ,False , 60)
 
     #Translated MNIST
-    mnist = MNIST(28, 4, 1, 2, 12, 1, 0.11, 26, True, 60)
+    #mnist = MNIST(28, 4, 1, 2, 12, 1, 0.11, 26, True, 60)
 
     mnist_size = mnist.mnist_size
     batch_size = mnist.batch_size
