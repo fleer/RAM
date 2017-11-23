@@ -9,12 +9,12 @@ class MNIST():
     The Code is based on https://github.com/jlindsey15/RAM
     """
 
-    def __init__(self, mnist_size, batch_size, channels, minRadius, sensorBandwidth, depth, loc_std, unit_pixels, translate, translated_mnist_size):
+    def __init__(self, mnist_size, batch_size, channels, scaling, sensorBandwidth, depth, loc_std, unit_pixels, translate, translated_mnist_size):
 
         self.mnist_size = mnist_size
         self.batch_size = batch_size
         self.channels = channels # grayscale
-        self.scaling = minRadius # zooms -> scaling * 2**<depth_level>
+        self.scaling = scaling # zooms -> scaling * 2**<depth_level>
         self.sensorBandwidth = sensorBandwidth # fixed resolution of sensor
         self.sensorArea = self.sensorBandwidth**2
         self.depth = depth # zooms
@@ -46,7 +46,8 @@ class MNIST():
 
         loc = normLoc * (self.unit_pixels * 2.)/ self.mnist_size # normLoc coordinates are between -1 and 1
         # Convert location [-1,1] into MNIST Coordinates:
-        loc = np.around(((loc + 1) / 2.0) * self.mnist_size) # normLoc coordinates are between -1 and 1
+        loc = np.around(((loc + 1) / 2.0) * self.mnist_size)
+
         loc = loc.astype(np.int32)
 
         img = np.reshape(img, (self.batch_size, self.mnist_size, self.mnist_size, self.channels))
@@ -57,15 +58,15 @@ class MNIST():
         for k in xrange(self.batch_size):
             imgZooms = []
             one_img = img[k,:,:,:]
-            offset = int(self.sensorBandwidth* (self.scaling ** (self.depth-1)) / 2.)
+            offset = self.sensorBandwidth* (self.scaling ** (self.depth-1))
 
             # pad image with zeros
             one_img = self.pad_to_bounding_box(one_img, offset, offset, \
-                offset * 2 + self.mnist_size, offset * 2 + self.mnist_size)
+                offset + self.mnist_size, offset + self.mnist_size)
 
             for i in xrange(self.depth):
-                r = int(self.sensorBandwidth * (self.scaling ** i) / 2.)
-                d = 2*r
+                d = int(self.sensorBandwidth * (self.scaling ** i))
+                r = d/2
 
                 loc_k = loc[k,:]
                 adjusted_loc = offset + loc_k - r
@@ -79,7 +80,7 @@ class MNIST():
 
                 # resize cropped image to (sensorBandwidth x sensorBandwidth)
                 zoom = cv2.resize(zoom, (self.sensorBandwidth, self.sensorBandwidth),
-                      interpolation=cv2.INTER_AREA)#INTER_LINEAR)
+                          interpolation=cv2.INTER_LINEAR)
                 zoom = np.reshape(zoom, (self.sensorBandwidth, self.sensorBandwidth))
                 imgZooms.append(zoom)
 

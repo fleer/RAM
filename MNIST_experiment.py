@@ -94,13 +94,11 @@ class Experiment():
 
     def train(self, lr, lr_decay):
         total_epochs = 0
-        data = self.mnist.dataset.train
-        batches_in_epoch = len(data._images) // self.batch_size
-
         # Initial Performance Check
         accuracy, accuracy_std = self.performance_run(total_epochs)
         logging.info("Epoch={:d}: >>> Accuracy: {:.4f} "
                      "+/- {:.6f}".format(total_epochs, accuracy, accuracy_std))
+        num_train_data = len(self.mnist.dataset.train._images)
 
 
         for i in range(self.max_epochs):
@@ -130,10 +128,12 @@ class Experiment():
             accuracy, accuracy_std = self.performance_run(total_epochs)
 
            # elif self.mnist.dataset.train.epochs_completed % 1 == 0:
-            logging.info("Epoch={:d}: >>> training time/epoch: {:.2f}, Loss: {:.4f}, "
+            logging.info("Epoch={:d}: >>> examples/s: {:.2f}, Loss: {:.4f}, "
                          "Learning Rate: {:.6f}, Accuracy: {:.4f} +/- {:.6f}".format(total_epochs,
-                                                 (time.time()-start_time), loss,
+                                                 float(num_train_data)/float(time.time()-start_time), loss,
                                                  lr, accuracy, accuracy_std))
+            if accuracy >= 0.98:
+                return 0
 
     def save(self, path, filename):
         """

@@ -67,7 +67,7 @@ class PARAMETERS:
     #   =========================
 
     #   Number of learning epochs
-    MAX_EPOCHS= 400
+    MAX_EPOCHS= 2000
     #   Batch size
     BATCH_SIZE = 20
 
@@ -90,10 +90,10 @@ class PARAMETERS:
     #   sgd
     OPTIMIZER = 'sgd'
     # Learning rate alpha
-    LEARNING_RATE = 0.001
+    LEARNING_RATE = 0.01
     # Number of steps the Learning rate should (linearly)
     # decay to MIN_LEARNING_RATE
-    LEARNING_RATE_DECAY = 200
+    LEARNING_RATE_DECAY = 800
     # Minimal Learning Rate
     MIN_LEARNING_RATE = 0.00001
     # Momentum

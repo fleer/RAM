@@ -66,14 +66,14 @@ class RAM():
         glimpse_model = keras.layers.Dense(128, activation='relu',
                                            kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                            bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                           name='glimpse_2'
+                                           name='glimpse_1'
                                            )(glimpse_model_i)
 
-        glimpse_model_out = keras.layers.Dense(256,
-                                           kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                           bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                               name='glimpse_3'
-                                               )(glimpse_model)
+      #  glimpse_model_out = keras.layers.Dense(256,
+      #                                     kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+      #                                     bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+      #                                         name='glimpse_3'
+      #                                         )(glimpse_model)
 
         # Build the location input
         location_model_i = keras.layers.Input(batch_shape=(self.batch_size, 2),
@@ -86,15 +86,25 @@ class RAM():
                                             name='location_1'
                                             )(location_model_i)
 
-        location_model_out = keras.layers.Dense(256,
-                                            kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                            bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                                name='location_2'
-                                                )(location_model)
+      #  location_model_out = keras.layers.Dense(256,
+      #                                      kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+      #                                      bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+      #                                          name='location_2'
+      #                                          )(location_model)
 
-        model_merge = keras.layers.add([glimpse_model_out, location_model_out], name='add')
-        glimpse_network_output  = keras.layers.Lambda(lambda x: K.relu(x))(model_merge)
-
+      #  model_merge = keras.layers.add([glimpse_model_out, location_model_out], name='add')
+      #  glimpse_network_output  = keras.layers.Lambda(lambda x: K.relu(x))(model_merge)
+        model_concat = keras.layers.concatenate([location_model, glimpse_model])
+        glimpse_network_output_0  = keras.layers.Dense(256,
+                                                      activation = 'relu',
+                                                      kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                                      bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
+                                                      )(model_concat)
+        glimpse_network_output  = keras.layers.Dense(256,
+                                                     activation = 'linear',
+                                                     kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                                     bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
+                                                     )(glimpse_network_output_0)
         #   ================
         #   Core Network
         #   ================

@@ -24,19 +24,19 @@ save = True
 
 mnist_size = MNIST_DOMAIN_OPTIONS.MNIST_SIZE
 channels = MNIST_DOMAIN_OPTIONS.CHANNELS
-minRadius = MNIST_DOMAIN_OPTIONS.MIN_ZOOM
+scaling = MNIST_DOMAIN_OPTIONS.SCALING_FACTOR
 sensorResolution = MNIST_DOMAIN_OPTIONS.SENSOR
 loc_std = MNIST_DOMAIN_OPTIONS.LOC_STD
-nZooms = MNIST_DOMAIN_OPTIONS.NZOOMS
+nZooms = MNIST_DOMAIN_OPTIONS.DEPTH
 nGlimpses = MNIST_DOMAIN_OPTIONS.NGLIMPSES
 
 #Reduce the batch size for evaluatoin
 batch_size = PARAMETERS.BATCH_SIZE
 
 totalSensorBandwidth = nZooms * sensorResolution * sensorResolution * channels
-mnist = MNIST(mnist_size, batch_size, channels, minRadius, sensorResolution,
-                   nZooms, loc_std, MNIST_DOMAIN_OPTIONS.UNIT_PIXELS,
-                   MNIST_DOMAIN_OPTIONS.TRANSLATE, MNIST_DOMAIN_OPTIONS.TRANSLATED_MNIST_SIZE)
+mnist = MNIST(mnist_size, batch_size, channels, scaling, sensorResolution,
+              nZooms, loc_std, MNIST_DOMAIN_OPTIONS.UNIT_PIXELS,
+              MNIST_DOMAIN_OPTIONS.TRANSLATE, MNIST_DOMAIN_OPTIONS.TRANSLATED_MNIST_SIZE)
 
 ram = RAM(totalSensorBandwidth, batch_size, nGlimpses,
                PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY,
@@ -79,7 +79,7 @@ sample_loc = np.tanh(np.random.normal(loc, loc_std, loc.shape))
 for n in range(nGlimpses):
     zooms = mnist.glimpseSensor(X,sample_loc)
     ng = 1
-    for g in range(batch_size):
+    for g in range(2):
         nz = 1
         plt.title(Y[g], fontsize=40)
         for z in zooms[g]:
