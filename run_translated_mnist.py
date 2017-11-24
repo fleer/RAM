@@ -69,6 +69,11 @@ class PARAMETERS:
     MAX_EPOCHS= 200
     #   Batch size
     BATCH_SIZE = 20
+    #   Early stopping
+    EARLY_STOPPING = True
+    #   Number of Epochs observing the worsening of
+    #   Validation set, before stopping
+    PATIENCE = 100
 
     #   =========================
     #   Save and Load the Model
@@ -89,7 +94,7 @@ class PARAMETERS:
     #   sgd
     OPTIMIZER = 'sgd'
     # Learning rate alpha
-    LEARNING_RATE = 0.001
+    LEARNING_RATE = 0.01
     # Number of steps the Learning rate should (linearly)
     # decay to MIN_LEARNING_RATE
     LEARNING_RATE_DECAY = 200

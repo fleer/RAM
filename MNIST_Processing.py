@@ -40,6 +40,12 @@ class MNIST():
             X, _ = self.convertTranslated(X, self.translated_mnist_size, self.mnist_size)
         return X,Y
 
+    def get_batch_validation(self, batch_size):
+        X, Y = self.dataset.validation.next_batch(batch_size)
+        if self.translate:
+            X, _ = self.convertTranslated(X, self.translated_mnist_size, self.mnist_size)
+        return X,Y
+
     def glimpseSensor(self, img, normLoc):
         assert not np.any(np.isnan(normLoc))," Locations have to be between 1, -1: {}".format(normLoc)
         assert np.any(np.abs(normLoc)<=1)," Locations have to be between 1, -1: {}".format(normLoc)

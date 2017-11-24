@@ -70,6 +70,11 @@ class PARAMETERS:
     MAX_EPOCHS= 2000
     #   Batch size
     BATCH_SIZE = 20
+    #   Early stopping
+    EARLY_STOPPING = True
+    #   Number of Epochs observing the worsening of
+    #   Validation set, before stopping
+    PATIENCE = 40
 
     #   =========================
     #   Save and Load the Model

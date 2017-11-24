@@ -118,7 +118,7 @@ class RAM():
         #   Action Network
         #   ================
         action_out = keras.layers.Dense(10,
-                                 activation='softmax',
+                                 activation='softmax', #self.log_softmax,
                                  kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  name='action_output',
@@ -128,7 +128,7 @@ class RAM():
         #   ================
 
         location_out = keras.layers.Dense(2,
-                                 activation='tanh',
+                                 activation=self.hard_tanh,
                                  #kernel_initializer=keras.initializers.glorot_uniform(),
                                  kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
@@ -175,6 +175,30 @@ class RAM():
 
         # Print Summary
         self.ram.summary()
+
+    def hard_tanh(self, x):
+        import tensorflow as tf
+        """Segment-wise linear approximation of tanh.
+
+         Faster than tanh.
+         Returns `-1.` if `x < -1.`, `1.` if `x > 1`.
+         In `-1. <= x <= 1.`, returns `x`.
+
+         # Arguments
+             x: A tensor or variable.
+
+         # Returns
+             A tensor.
+         """
+
+        lower = tf.convert_to_tensor(-1., x.dtype.base_dtype)
+        upper = tf.convert_to_tensor(1., x.dtype.base_dtype)
+        x = tf.clip_by_value(x, lower, upper)
+        return x
+
+    def log_softmax(self, x, axis=-1):
+        return x - K.log(K.sum(K.exp(x), axis=axis, keepdims=True))
+
 
     def CROSS_ENTROPY(self, y_true, y_pred):
         """
@@ -255,12 +279,11 @@ class RAM():
             """
             # Compute Predicted and Correct action values
             max_p_y = K.argmax(action_p)
-            action = K.argmax(y_true)
 
+            action = K.cast(y_true, 'int64')
             # Get Reward for current step
             R = K.equal(max_p_y, action) # reward per example
-            R = K.cast(R, 'float32')
-            R_out = K.reshape(R, (self.batch_size,1))
+            R_out = K.cast(R, 'float32')
             return K.mean(K.square(R_out - y_pred), axis=-1)
       #  self.ram.trainable = False
       #  self.ram.get_layer('baseline_output').trainable = True
@@ -279,7 +302,7 @@ class RAM():
         K.set_value(self.ram.optimizer.lr, lr)
         return lr
 
-    def train(self, zooms, loc_input, true_a):
+    def train(self, zooms, loc_input, true_a, action):
         """
         Train the Model!
         :param zooms: Current zooms, created using loc_input
@@ -289,11 +312,11 @@ class RAM():
         """
       #  self.ram.trainable = True
 
-
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
 
         loss = self.ram.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input},
-                                       {'action_output': true_a, 'location_output': true_a, 'baseline_output': true_a})
+                                       {'action_output': true_a, 'location_output': loc_input,
+                                        'baseline_output': action})
 
         #return loss, loss_l, loss_b, R#, np.mean(b, axis=-1)
         return np.mean(loss)
@@ -318,6 +341,12 @@ class RAM():
         action_prob, loc, _ = self.ram.predict_on_batch({"glimpse_input": glimpse_input, 'location_input': loc})
         #return self.act_net.predict_on_batch(ram_out), self.loc_net.predict_on_batch(ram_out), ram_out, gl_out
         return action_prob, loc
+
+    def get_weights(self):
+        return self.ram.get_weights()
+
+    def set_weights(self, weights):
+        return self.ram.set_weights(weights)
 
     def save_model(self, path, filename):
         """
