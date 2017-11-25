@@ -350,8 +350,7 @@ class RAM():
 
     def save_model(self, path, filename):
         """
-        Saves the model to ``model.json`` file and
-        also the model weights to model.h5 file
+        Saves the model weights to model.h5 file
 
         :param path: Path to file
         :param filename: Filename
@@ -360,57 +359,21 @@ class RAM():
         model_fn = os.path.join(path, filename)
         if not os.path.exists(path):
             os.makedirs(path)
-        # serialize model to JSON
-        model_json = self.ram.to_json()
-        with open(model_fn + ".json", "w") as json_file:
-            json_file.write(model_json)
         # serialize weights to HDF5
         self.ram.save_weights(model_fn + ".h5")
 
-    def load_model(self, path, filename, optimizer, lr, momentum, clipnorm, clipvalue):
+    def load_model(self, path, filename):
         """
-        Load the model from ``model.json`` file and
-        also the model weights from model.h5 file
+        Load the model weights from model.h5 file
 
         :param path: Path to file
         :param filename: Filename
         :return: Loading successfull
         """
         model_fn = os.path.join(path, filename)
-        if os.path.isfile(model_fn + '.json') and os.path.isfile(model_fn + '.h5'):
-            # load json and create model
-            json_file = open(model_fn + '.json', 'r')
-            loaded_model_json = json_file.read()
-            json_file.close()
-            self.ram = keras.models.model_from_json(loaded_model_json)
+        if  os.path.isfile(model_fn + '.h5'):
             # load weights into new model
             self.ram.load_weights(model_fn + ".h5")
-
-            # Compile the model
-            if optimizer == "rmsprop":
-                self.ram.compile(optimizer=keras.optimizers.rmsprop(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                                 loss={'action_output': self.CROSS_ENTROPY,
-                                       'location_output': self.REINFORCE_LOSS(action_p=self.ram.get_layer("action_output").output, baseline=self.ram.get_layer("baseline_output").output),
-                                       'baseline_output': self.BASELINE_LOSS(action_p=self.ram.get_layer("action_output").output)})
-            elif optimizer == "adam":
-                self.ram.compile(optimizer=keras.optimizers.adam(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                                 loss={'action_output': self.CROSS_ENTROPY,
-                                       'location_output': self.REINFORCE_LOSS(action_p=self.ram.get_layer("action_output").output, baseline=self.ram.get_layer("baseline_output").output),
-                                       'baseline_output': self.BASELINE_LOSS(action_p=self.ram.get_layer("action_output").output)})
-            elif optimizer == "adadelta":
-                self.ram.compile(optimizer=keras.optimizers.adadelta(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                                 loss={'action_output': self.CROSS_ENTROPY,
-                                       'location_output': self.REINFORCE_LOSS(action_p=self.ram.get_layer("action_output").output, baseline=self.ram.get_layer("baseline_output").output),
-                                       'baseline_output': self.BASELINE_LOSS(action_p=self.ram.get_layer("action_output").output)})
-            elif optimizer == 'sgd':
-                self.ram.compile(optimizer=keras.optimizers.SGD(lr=lr, momentum=momentum, nesterov=False, clipvalue=clipvalue, clipnorm=clipnorm),
-                                 loss={'action_output': self.CROSS_ENTROPY,
-                                       'location_output': self.REINFORCE_LOSS(action_p=self.ram.get_layer("action_output").output, baseline=self.ram.get_layer("baseline_output").output),
-                                       'baseline_output': self.BASELINE_LOSS(action_p=self.ram.get_layer("action_output").output)})
-            else:
-                raise ValueError("Unrecognized update: {}".format(optimizer))
-
-            self.ram.summary()
             return True
         else:
             return False

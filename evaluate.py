@@ -42,19 +42,18 @@ ram = RAM(totalSensorBandwidth, batch_size, nGlimpses,
                PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY,
                PARAMETERS.MIN_LEARNING_RATE, MNIST_DOMAIN_OPTIONS.LOC_STD)
 
+ram.big_net(PARAMETERS.OPTIMIZER,PARAMETERS.LEARNING_RATE,PARAMETERS.MOMENTUM,
+                 PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE)
+
 if len(sys.argv) > 2:
-    if ram.load_model('./', sys.argv[2], PARAMETERS.OPTIMIZER,PARAMETERS.LEARNING_RATE,PARAMETERS.MOMENTUM,
-                           PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE):
-        print("Loaded model from " + sys.argv[2] +
-                     ".json and " + sys.argv[2] + ".h5!")
+    if ram.load_model('./', sys.argv[2]):
+        print("Loaded wights from " + sys.argv[2] + ".h5!")
     else:
-        print("Model from " + sys.argv[2] +
+        print("Weights from " + sys.argv[2] +
                      " could not be loaded!")
         sys.exit(0)
 else:
-    ram.big_net(PARAMETERS.OPTIMIZER,PARAMETERS.LEARNING_RATE,PARAMETERS.MOMENTUM,
-                     PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE)
-    print("No model file provided! New model initialized!")
+    print("No weight file provided! New model initialized!")
 
 
 plt.ion()

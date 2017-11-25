@@ -46,18 +46,15 @@ class Experiment():
                        PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY,
                        PARAMETERS.MIN_LEARNING_RATE, DOMAIN_OPTIONS.LOC_STD)
 
+        self.ram.big_net(PARAMETERS.OPTIMIZER,PARAMETERS.LEARNING_RATE,PARAMETERS.MOMENTUM,
+                         PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE)
+
         if PARAMETERS.LOAD_MODEL:
-            if self.ram.load_model(PARAMETERS.MODEL_FILE_PATH, PARAMETERS.MODEL_FILE, PARAMETERS.OPTIMIZER,PARAMETERS.LEARNING_RATE,PARAMETERS.MOMENTUM,
-                                PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE):
-                logging.info("Loaded model from " + PARAMETERS.MODEL_FILE_PATH + PARAMETERS.MODEL_FILE +
-                             ".json and " + PARAMETERS.MODEL_FILE_PATH + PARAMETERS.MODEL_FILE + ".h5!")
+            if self.ram.load_model(PARAMETERS.MODEL_FILE_PATH, PARAMETERS.MODEL_FILE):
+                logging.info("Loaded model weigths from " + PARAMETERS.MODEL_FILE_PATH + PARAMETERS.MODEL_FILE + ".h5!")
             else:
-                logging.info("Model from " + PARAMETERS.MODEL_FILE_PATH + PARAMETERS.MODEL_FILE +
-                             " could not be loaded!")
+                logging.info("Weigts from " + PARAMETERS.MODEL_FILE_PATH + PARAMETERS.MODEL_FILE + " could not be loaded!")
                 sys.exit(0)
-        else:
-            self.ram.big_net(PARAMETERS.OPTIMIZER,PARAMETERS.LEARNING_RATE,PARAMETERS.MOMENTUM,
-                                PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE)
 
 
         self.train(PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY, PARAMETERS.EARLY_STOPPING, PARAMETERS.PATIENCE)
