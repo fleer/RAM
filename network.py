@@ -118,7 +118,7 @@ class RAM():
         #   Action Network
         #   ================
         action_out = keras.layers.Dense(10,
-                                 activation='softmax', #self.log_softmax,
+                                 activation=self.log_softmax,
                                  kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  name='action_output',
@@ -340,6 +340,7 @@ class RAM():
         glimpse_input = np.reshape(X, (self.batch_size, self.totalSensorBandwidth))
         action_prob, loc, _ = self.ram.predict_on_batch({"glimpse_input": glimpse_input, 'location_input': loc})
         #return self.act_net.predict_on_batch(ram_out), self.loc_net.predict_on_batch(ram_out), ram_out, gl_out
+        print action_prob
         return action_prob, loc
 
     def get_weights(self):
