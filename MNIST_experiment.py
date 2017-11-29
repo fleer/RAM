@@ -78,7 +78,7 @@ class Experiment():
             else:
                 X, Y= self.mnist.get_batch_test(self.batch_size)
             loc = np.random.uniform(-1, 1,(self.batch_size, 2))
-            sample_loc = np.tanh(np.random.normal(loc, self.loc_std, loc.shape))
+            sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
             for n in range(self.nGlimpses):
                 zooms = self.mnist.glimpseSensor(X,sample_loc)
                 a_prob, loc = self.ram.choose_action(zooms, sample_loc)
@@ -102,9 +102,9 @@ class Experiment():
     def train(self, lr, lr_decay, early_stopping, patience):
         total_epochs = 0
         # Initial Performance Check
-        accuracy, accuracy_std = self.performance_run(total_epochs)
-        logging.info("Epoch={:d}: >>> Test-Accuracy: {:.4f} "
-                     "+/- {:.6f}".format(total_epochs, accuracy, accuracy_std))
+        #accuracy, accuracy_std = self.performance_run(total_epochs)
+        #logging.info("Epoch={:d}: >>> Test-Accuracy: {:.4f} "
+        #             "+/- {:.6f}".format(total_epochs, accuracy, accuracy_std))
         num_train_data = len(self.mnist.dataset.train._images)
 
         patience_steps = 0
@@ -118,7 +118,7 @@ class Experiment():
             while total_epochs == self.mnist.dataset.train.epochs_completed:
                 X, Y= self.mnist.get_batch_train(self.batch_size)
                 loc = np.random.uniform(-1, 1, (self.batch_size, 2))
-                sample_loc = np.tanh(np.random.normal(loc, self.loc_std, loc.shape))
+                sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
                 for n in range(1, self.nGlimpses):
                     zooms = self.mnist.glimpseSensor(X, sample_loc)
                     a_prob, loc = self.ram.choose_action(zooms, sample_loc)

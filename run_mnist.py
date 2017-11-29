@@ -74,7 +74,7 @@ class PARAMETERS:
     EARLY_STOPPING = True
     #   Number of Epochs observing the worsening of
     #   Validation set, before stopping
-    PATIENCE = 40
+    PATIENCE = 100
 
     #   =========================
     #   Save and Load the Model Weights

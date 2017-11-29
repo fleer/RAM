@@ -69,12 +69,6 @@ class RAM():
                                            name='glimpse_1'
                                            )(glimpse_model_i)
 
-      #  glimpse_model_out = keras.layers.Dense(256,
-      #                                     kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-      #                                     bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-      #                                         name='glimpse_3'
-      #                                         )(glimpse_model)
-
         # Build the location input
         location_model_i = keras.layers.Input(batch_shape=(self.batch_size, 2),
                                               name='location_input')
@@ -86,15 +80,8 @@ class RAM():
                                             name='location_1'
                                             )(location_model_i)
 
-      #  location_model_out = keras.layers.Dense(256,
-      #                                      kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-      #                                      bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-      #                                          name='location_2'
-      #                                          )(location_model)
-
-      #  model_merge = keras.layers.add([glimpse_model_out, location_model_out], name='add')
-      #  glimpse_network_output  = keras.layers.Lambda(lambda x: K.relu(x))(model_merge)
         model_concat = keras.layers.concatenate([location_model, glimpse_model])
+
         glimpse_network_output_0  = keras.layers.Dense(256,
                                                       activation = 'relu',
                                                       kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
@@ -152,22 +139,22 @@ class RAM():
         # Compile the model
         if optimizer == "rmsprop":
             self.ram.compile(optimizer=keras.optimizers.rmsprop(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.CROSS_ENTROPY,
+                             loss={'action_output': self.NNL_Criterion,
                                    'location_output': self.REINFORCE_LOSS(action_p=action_out, baseline=baseline_output),
                                    'baseline_output': self.BASELINE_LOSS(action_p=action_out)})
         elif optimizer == "adam":
             self.ram.compile(optimizer=keras.optimizers.adam(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.CROSS_ENTROPY,
+                             loss={'action_output': self.NNL_Criterion,
                                    'location_output': self.REINFORCE_LOSS(action_p=action_out, baseline=baseline_output),
                                    'baseline_output': self.BASELINE_LOSS(action_p=action_out)})
         elif optimizer == "adadelta":
             self.ram.compile(optimizer=keras.optimizers.adadelta(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.CROSS_ENTROPY,
+                             loss={'action_output': self.NNL_Criterion,
                                    'location_output': self.REINFORCE_LOSS(action_p=action_out, baseline=baseline_output),
                                    'baseline_output': self.BASELINE_LOSS(action_p=action_out)})
         elif optimizer == 'sgd':
             self.ram.compile(optimizer=keras.optimizers.SGD(lr=lr, momentum=momentum, nesterov=False, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.CROSS_ENTROPY,
+                             loss={'action_output': self.NNL_Criterion,
                                    'location_output': self.REINFORCE_LOSS(action_p=action_out, baseline=baseline_output),
                                    'baseline_output': self.BASELINE_LOSS(action_p=action_out)})
         else:
@@ -197,18 +184,23 @@ class RAM():
         return x
 
     def log_softmax(self, x, axis=-1):
-        return x - K.log(K.sum(K.exp(x), axis=axis, keepdims=True))
+        import tensorflow as tf
+        return tf.nn.log_softmax(x)
+        #return x - K.log(K.sum(K.exp(x), axis=axis, keepdims=True))
 
 
-    def CROSS_ENTROPY(self, y_true, y_pred):
+    def NNL_Criterion(self, y_true, y_pred):
         """
-        Standard CrossEntropy Loss
+        Negative log likelihood (NNL) criterion
         :param y_true: True Value
-        :param y_pred: Network Prediction
+        :param y_pred: Log-Probability Network Prediction
         :return: Loss
+
+        Log-Probability is achieved by using LogSoftMax activation
         """
       #  self.ram.trainable = True
-        return K.categorical_crossentropy(y_true, y_pred)
+        #return K.categorical_crossentropy(y_true, y_pred)
+        return - y_true * y_pred
 
     def REINFORCE_LOSS(self, action_p, baseline):
         """
@@ -340,7 +332,6 @@ class RAM():
         glimpse_input = np.reshape(X, (self.batch_size, self.totalSensorBandwidth))
         action_prob, loc, _ = self.ram.predict_on_batch({"glimpse_input": glimpse_input, 'location_input': loc})
         #return self.act_net.predict_on_batch(ram_out), self.loc_net.predict_on_batch(ram_out), ram_out, gl_out
-        print action_prob
         return action_prob, loc
 
     def get_weights(self):
