@@ -102,9 +102,9 @@ class Experiment():
     def train(self, lr, lr_decay, early_stopping, patience):
         total_epochs = 0
         # Initial Performance Check
-        #accuracy, accuracy_std = self.performance_run(total_epochs)
-        #logging.info("Epoch={:d}: >>> Test-Accuracy: {:.4f} "
-        #             "+/- {:.6f}".format(total_epochs, accuracy, accuracy_std))
+        accuracy, accuracy_std = self.performance_run(total_epochs)
+        logging.info("Epoch={:d}: >>> Test-Accuracy: {:.4f} "
+                     "+/- {:.6f}".format(total_epochs, accuracy, accuracy_std))
         num_train_data = len(self.mnist.dataset.train._images)
 
         patience_steps = 0
