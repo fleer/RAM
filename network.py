@@ -40,9 +40,6 @@ class RAM():
             self.lr_decay_rate = ((lr - min_lr) /
                                  lr_decay)
 
-        # Create the network
-       # self.big_net(optimizer, lr, momentum, clipnorm, clipvalue)
-
 
     def big_net(self, optimizer, lr, momentum, clipnorm, clipvalue):
         """
@@ -164,7 +161,6 @@ class RAM():
         self.ram.summary()
 
     def hard_tanh(self, x):
-        import tensorflow as tf
         """Segment-wise linear approximation of tanh.
 
          Faster than tanh.
@@ -177,6 +173,7 @@ class RAM():
          # Returns
              A tensor.
          """
+        import tensorflow as tf
 
         lower = tf.convert_to_tensor(-1., x.dtype.base_dtype)
         upper = tf.convert_to_tensor(1., x.dtype.base_dtype)
@@ -186,6 +183,7 @@ class RAM():
     def log_softmax(self, x, axis=-1):
         import tensorflow as tf
         return tf.nn.log_softmax(x)
+        #TODO: Check own log_softmax implementation
         #return x - K.log(K.sum(K.exp(x), axis=axis, keepdims=True))
 
 
@@ -198,8 +196,7 @@ class RAM():
 
         Log-Probability is achieved by using LogSoftMax activation
         """
-      #  self.ram.trainable = True
-        #return K.categorical_crossentropy(y_true, y_pred)
+        #TODO: Implement baseline!
         return - y_true * y_pred
 
     def REINFORCE_LOSS(self, action_p, baseline):
@@ -250,6 +247,7 @@ class RAM():
             b = K.tile(baseline, [1, 2])
             loss_loc = ((sample_loc - y_pred)/(self.loc_std*self.loc_std)) * (R -b)
             return - loss_loc
+        #TODO: Test alternative--> Only train dense layer of location output
       #  self.ram.trainable = False
       #  self.ram.get_layer('location_output').trainable = True
         return loss
@@ -277,6 +275,7 @@ class RAM():
             R = K.equal(max_p_y, action) # reward per example
             R_out = K.cast(R, 'float32')
             return K.mean(K.square(R_out - y_pred), axis=-1)
+        #TODO: Test alternative--> Only train dense layer of baseline output
       #  self.ram.trainable = False
       #  self.ram.get_layer('baseline_output').trainable = True
         return loss
@@ -310,7 +309,6 @@ class RAM():
                                        {'action_output': true_a, 'location_output': loc_input,
                                         'baseline_output': action})
 
-        #return loss, loss_l, loss_b, R#, np.mean(b, axis=-1)
         return np.mean(loss)
 
     def reset_states(self):
@@ -331,7 +329,6 @@ class RAM():
 
         glimpse_input = np.reshape(X, (self.batch_size, self.totalSensorBandwidth))
         action_prob, loc, _ = self.ram.predict_on_batch({"glimpse_input": glimpse_input, 'location_input': loc})
-        #return self.act_net.predict_on_batch(ram_out), self.loc_net.predict_on_batch(ram_out), ram_out, gl_out
         return action_prob, loc
 
     def get_weights(self):
