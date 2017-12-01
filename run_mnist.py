@@ -1,5 +1,4 @@
 """
-        #for z in g:
 Configuration File to Classify the standard MNIST Dataset
 with, using the Recurrent Attention Model, presented in
 
@@ -9,6 +8,7 @@ Advances in neural information processing systems. 2014.
 
 Author: Sascha Fleer
 """
+
 from MNIST_experiment import Experiment
 
 class MNIST_DOMAIN_OPTIONS:
@@ -43,12 +43,9 @@ class MNIST_DOMAIN_OPTIONS:
     NGLIMPSES = 7
     # Standard Deviation of the Location Policy
     LOC_STD = 0.11
-    # This variable basically outlines how far (in pixels) near the borders
-    # the center of each glimpse can reach with respect to the center.
-    # So a value of 13 (the default) means that the center of the glimpse
-    # can be anywhere between the 2rd and 27th pixel (for a 1x28x28 MNIST example).
-    # So glimpses of the corner will have fewer zero-padding values
-    # then if UNIT_PIXELS = 14
+    # Defines how far the center of the glimpse
+    # can reach the borders
+    # UNIT_PIXELS = 13 --> g_c \in [2,27] for 28x28x1 images
     UNIT_PIXELS = 13
     # Translated MNIST
     TRANSLATE = False
