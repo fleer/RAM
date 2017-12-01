@@ -31,7 +31,8 @@ style = {
     "linewidth": 2, "alpha": .7, "linestyle": "-", "markersize": 7}
 
 
-x = np.arange(len(file['accuracy']))
+#x = np.arange(len(file['accuracy']))
+x = np.asarray(file['learning_steps'])
 y_mean = np.asarray(file['accuracy'])
 y_sem = np.asarray(file['accuracy_std'])
 y_mean *= 100.
