@@ -6,7 +6,7 @@ import cv2
 class MNIST():
     """
     Class for downloading and preprocessing the MNIST image dataset
-    The Code is based on https://github.com/jlindsey15/RAM
+    The Code for creating the glimpses is based on https://github.com/jlindsey15/RAM
     """
 
     def __init__(self, mnist_size, batch_size, channels, scaling, sensorBandwidth, depth, loc_std, unit_pixels, translate, translated_mnist_size):

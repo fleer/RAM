@@ -14,17 +14,16 @@ class Experiment():
     Main class, controlling the experiment
     """
 
-
-    #   ================
-    #   Evaluation
-    #   ================
-
     results = defaultdict(list)
 
 
     def __init__(self, PARAMETERS, DOMAIN_OPTIONS, results_file="001-results.json", model_file="001-network"):
 
         logging.basicConfig(level=logging.INFO)
+
+        #   ================
+        #   Reading the parameters
+        #   ================
 
         mnist_size = DOMAIN_OPTIONS.MNIST_SIZE
         channels = DOMAIN_OPTIONS.CHANNELS
@@ -37,11 +36,20 @@ class Experiment():
         self.batch_size = PARAMETERS.BATCH_SIZE
         self.max_epochs = PARAMETERS.MAX_EPOCHS
 
-
         totalSensorBandwidth = self.nZooms * sensorResolution * sensorResolution * channels
+
+        #   ================
+        #   Loading the MNIST Dataset
+        #   ================
+
         self.mnist = MNIST(mnist_size, self.batch_size, channels, scaling_factor, sensorResolution,
                            self.nZooms, self.loc_std, DOMAIN_OPTIONS.UNIT_PIXELS,
                            DOMAIN_OPTIONS.TRANSLATE, DOMAIN_OPTIONS.TRANSLATED_MNIST_SIZE)
+
+        #   ================
+        #   Creating the RAM
+        #   ================
+
         self.ram = RAM(totalSensorBandwidth, self.batch_size, self.nGlimpses,
                        PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY,
                        PARAMETERS.MIN_LEARNING_RATE, DOMAIN_OPTIONS.LOC_STD)
@@ -57,12 +65,25 @@ class Experiment():
                 sys.exit(0)
 
 
+        #   ================
+        #   Train
+        #   ================
+
         self.train(PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY, PARAMETERS.EARLY_STOPPING, PARAMETERS.PATIENCE)
         self.save('./', results_file)
         if model_file is not None:
             self.ram.save_model('./', model_file)
 
     def performance_run(self, total_epochs, validation=False):
+        """
+        Function for evaluating the current model on the
+        validation- or test-dataset
+
+        :param total_epochs: Number of trained epochs
+        :param validation: Should the smaller validation-dataset
+                be evaluated
+        :return: current accuracy and its error
+        """
         actions = 0.
         actions_sqrt = 0.
         if validation:
@@ -93,6 +114,7 @@ class Experiment():
         accuracy_std = np.sqrt(((actions_sqrt/num_data) - accuracy**2)/num_data)
 
         if not validation:
+            # Save to results file
             self.results['learning_steps'].append(total_epochs)
             self.results['accuracy'].append(accuracy)
             self.results['accuracy_std'].append(accuracy_std)
@@ -100,6 +122,15 @@ class Experiment():
         return accuracy, accuracy_std
 
     def train(self, lr, lr_decay, early_stopping, patience):
+        """
+        Training the current model
+        :param lr: learning rate
+        :param lr_decay: Number of steps the Learning rate should (linearly)
+        :param early_stopping: Use early stopping
+        :param patience: Number of Epochs observing the worsening of
+                Validation set, before stopping
+        :return:
+        """
         total_epochs = 0
         # Initial Performance Check
         accuracy, accuracy_std = self.performance_run(total_epochs)
@@ -160,7 +191,8 @@ class Experiment():
                                  float(num_train_data)/float(time.time()-start_time), loss,
                                  lr, test_accuracy, test_accuracy_std, accuracy, accuracy_std))
 
-                if early_stopping_accuracy < accuracy:
+                # Early Stopping
+                if early_stopping and early_stopping_accuracy < accuracy:
                     early_stopping_accuracy = accuracy
                     best_weights = self.ram.get_weights()
                     patience_steps = 0
