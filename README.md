@@ -65,7 +65,8 @@ The chosen parameters are the same as in [4].
 The plot below shows the training accuracy for the first 400 epochs. 
 ![Example](./MNIST_Results/MNIST_accuracy.png)
 
- Examples of the images and the corresponding glimpses used by the network are displayed in the table.
+Examples of the images and the corresponding glimpses used by the network are displayed in the table.
+ 
 |Originial Image | Glimpse 0| Glimpse 1| Glimpse 2 |Glimpse 3|
 |:--:|:--:|:--:|:--:|:--:|
 |<img src="./MNIST_Results/Images/symbol_0.png" alt="Symbol0" width="140">|<img src="./MNIST_Results/Images/symbol_0_glimpse_0_zoom_1.png" alt="Glimpse0" width="140">|<img src="./MNIST_Results/Images/symbol_0_glimpse_1_zoom_1.png" alt="Glimpse1" width="140">|<img src="./MNIST_Results/Images/symbol_0_glimpse_2_zoom_1.png" alt="Glimpse2" width="140">|<img src="./MNIST_Results/Images/symbol_0_glimpse_3_zoom_1.png" alt="Glimpse3" width="140">|
