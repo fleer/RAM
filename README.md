@@ -58,7 +58,8 @@ start the training via the corresponding configuration file:
 ```
 python run_mnist.py
 ```
-The chosen parameters are nearly the same as in [4].
+ 
+The chosen parameters are the same as in [4].
 
 The plot below shows the training accuracy for the first 400 epochs. 
 
@@ -70,6 +71,8 @@ The plot below shows the training accuracy for the first 400 epochs.
 |:--:|:--:|:--:|:--:|:--:|
 |<img src="./MNIST_Results/Images/symbol_0.png" alt="Symbol0" width="140">|<img src="./MNIST_Results/Images/symbol_0_glimpse_0_zoom_1.png" alt="Glimpse0" width="140">|<img src="./MNIST_Results/Images/symbol_0_glimpse_1_zoom_1.png" alt="Glimpse1" width="140">|<img src="./MNIST_Results/Images/symbol_0_glimpse_2_zoom_1.png" alt="Glimpse2" width="140">|<img src="./MNIST_Results/Images/symbol_0_glimpse_3_zoom_1.png" alt="Glimpse3" width="140">|
 |<img src="./MNIST_Results/Images/symbol_1.png" alt="Symbol1" width="140">|<img src="./MNIST_Results/Images/symbol_1_glimpse_0_zoom_1.png" alt="Glimpse0" width="140">|<img src="./MNIST_Results/Images/symbol_1_glimpse_1_zoom_1.png" alt="Glimpse1" width="140">|<img src="./MNIST_Results/Images/symbol_1_glimpse_2_zoom_1.png" alt="Glimpse2" width="140">|<img src="./MNIST_Results/Images/symbol_1_glimpse_3_zoom_1.png" alt="Glimpse3" width="140">|
+
+**Current Highscore:  0.8683% +/- 0.003382 accuracy on MNIST Test-Dataset.**
 
 ## Classification of the translated MNIST dataset
 In [1], the network is tested on non-centered digits. 
