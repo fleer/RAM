@@ -1,7 +1,9 @@
-import keras
-from keras import backend as K
-import numpy as np
 import os
+
+import keras
+import numpy as np
+from keras import backend as K
+
 
 class RAM():
     """
@@ -136,24 +138,24 @@ class RAM():
         # Compile the model
         if optimizer == "rmsprop":
             self.ram.compile(optimizer=keras.optimizers.rmsprop(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.NNL_Criterion,
-                                   'location_output': self.REINFORCE_LOSS(action_p=action_out, baseline=baseline_output),
-                                   'baseline_output': self.BASELINE_LOSS(action_p=action_out)})
+                             loss={'action_output': self.nnl_criterion,
+                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
+                                   'baseline_output': self.baseline_loss(action_p=action_out)})
         elif optimizer == "adam":
             self.ram.compile(optimizer=keras.optimizers.adam(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.NNL_Criterion,
-                                   'location_output': self.REINFORCE_LOSS(action_p=action_out, baseline=baseline_output),
-                                   'baseline_output': self.BASELINE_LOSS(action_p=action_out)})
+                             loss={'action_output': self.nnl_criterion,
+                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
+                                   'baseline_output': self.baseline_loss(action_p=action_out)})
         elif optimizer == "adadelta":
             self.ram.compile(optimizer=keras.optimizers.adadelta(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.NNL_Criterion,
-                                   'location_output': self.REINFORCE_LOSS(action_p=action_out, baseline=baseline_output),
-                                   'baseline_output': self.BASELINE_LOSS(action_p=action_out)})
+                             loss={'action_output': self.nnl_criterion,
+                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
+                                   'baseline_output': self.baseline_loss(action_p=action_out)})
         elif optimizer == 'sgd':
             self.ram.compile(optimizer=keras.optimizers.SGD(lr=lr, momentum=momentum, nesterov=False, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.NNL_Criterion,
-                                   'location_output': self.REINFORCE_LOSS(action_p=action_out, baseline=baseline_output),
-                                   'baseline_output': self.BASELINE_LOSS(action_p=action_out)})
+                             loss={'action_output': self.nnl_criterion,
+                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
+                                   'baseline_output': self.baseline_loss(action_p=action_out)})
         else:
             raise ValueError("Unrecognized update: {}".format(optimizer))
 
@@ -187,7 +189,7 @@ class RAM():
         #return x - K.log(K.sum(K.exp(x), axis=axis, keepdims=True))
 
 
-    def NNL_Criterion(self, y_true, y_pred):
+    def nnl_criterion(self, y_true, y_pred):
         """
         Negative log likelihood (NNL) criterion
         :param y_true: True Value
@@ -199,7 +201,7 @@ class RAM():
         #TODO: Implement baseline!
         return - y_true * y_pred
 
-    def REINFORCE_LOSS(self, action_p, baseline):
+    def reinforce_loss(self, action_p, baseline):
         """
         :param action_p: Network output of action network
         :param baseline: Network putput of baseline network
@@ -252,7 +254,7 @@ class RAM():
       #  self.ram.get_layer('location_output').trainable = True
         return loss
 
-    def BASELINE_LOSS(self, action_p):
+    def baseline_loss(self, action_p):
         """
         :param action_p: Network output of action network
         :return: Baseline Loss
