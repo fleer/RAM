@@ -85,11 +85,6 @@ python run_translated_mnist.py
 ```
 The chosen parameters are nearly the same as in [4].
 
-
-The plot below shows the training accuracy for the first 200 epochs. 
-
-![Example](./MNIST_Translated_Results/MNIST_accuracy.png)
-
 --------
 [1] Mnih, Volodymyr, Nicolas Heess, and Alex Graves. "Recurrent models of visual attention." Advances in neural information processing systems. 2014.
 
