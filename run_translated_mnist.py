@@ -1,6 +1,6 @@
 """
 Configuration File to Classify the standard MNIST Dataset
-with, using the Recurrent Attention Model, presented in
+using the Recurrent Attention Model, presented in
 
 Mnih, Volodymyr, Nicolas Heess, and Alex Graves.
 "Recurrent models of visual attention."
