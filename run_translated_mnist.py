@@ -34,10 +34,10 @@ class MNIST_DOMAIN_OPTIONS:
     #
     # Resolution of the Sensor
     SENSOR = 12
-    # Number of zooms
-    NZOOMS = 3
-    # zoom sale # zooms -> mnist_size * (min_zoom **<depth_level>)
-    MIN_ZOOM = 2
+    # Depth of glimpse (depth = 1--> original solution)
+    DEPTH = 3
+    # Scaling Factor of zooms
+    SCALING_FACTOR = 2
     # Number of Glimpses
     NGLIMPSES = 7
     # Standard Deviation of the Location Policy
@@ -66,14 +66,14 @@ class PARAMETERS:
     #   =========================
 
     #   Number of learning epochs
-    MAX_EPOCHS= 200
+    MAX_EPOCHS= 2000
     #   Batch size
     BATCH_SIZE = 20
     #   Early stopping
     EARLY_STOPPING = True
     #   Number of Epochs observing the worsening of
     #   Validation set, before stopping
-    PATIENCE = 100
+    PATIENCE = 200
 
     #   =========================
     #   Save and Load the Model Weights
@@ -97,7 +97,7 @@ class PARAMETERS:
     LEARNING_RATE = 0.01
     # Number of steps the Learning rate should (linearly)
     # decay to MIN_LEARNING_RATE
-    LEARNING_RATE_DECAY = 200
+    LEARNING_RATE_DECAY = 800
     # Minimal Learning Rate
     MIN_LEARNING_RATE = 0.00001
     # Momentum
