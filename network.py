@@ -123,21 +123,6 @@ class RAM():
                                  )(model_output)
 
         #   ================
-        #   Location Network at timestep 0
-        #   ================
-
-        #TODO: Find a better solution
-
-        hidden_state_in_0 = keras.layers.Input(shape=(256,))
-        location_out_t0 = keras.layers.Dense(2,
-                                          activation=self.hard_tanh,
-                                          #kernel_initializer=keras.initializers.glorot_uniform(),
-                                          kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                          bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                          # bias_initializer=keras.initializers.glorot_uniform(),
-                                          name='location_output_t0',
-                                          )(hidden_state_in_0)
-        #   ================
         #   Baseline Network
         #   ================
         baseline_output = keras.layers.Dense(1,
@@ -151,8 +136,25 @@ class RAM():
         # Create the model
         self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out, baseline_output])
 
+        #   ================
+        #   Location Network at timestep 0
+        #   ================
+
+        #TODO: Find a better solution
+
+        hidden_state_in_0 = keras.layers.Input(shape=(256,))
+        location_out_t0 = keras.layers.Dense(2,
+                                             activation=self.hard_tanh,
+                                             #kernel_initializer=keras.initializers.glorot_uniform(),
+                                             kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                             bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                             # bias_initializer=keras.initializers.glorot_uniform(),
+                                             name='location_output_t0',
+                                             trainable=False
+                                             )(hidden_state_in_0)
+
         # Create Location model at timestep 0
-        self.loc_t0 = keras.model.Model(inputs=hidden_state_in_0, output=location_out_t0)
+        self.loc_t0 = keras.models.Model(inputs=hidden_state_in_0, outputs=location_out_t0)
 
         # Compile the model
         if optimizer == "rmsprop":
