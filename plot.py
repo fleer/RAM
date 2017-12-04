@@ -24,7 +24,7 @@ if len(sys.argv) > 1:
         sys.exit(0)
 else:
     print "Give Results-File as additional argument! \n " \
-          "E.g. python plot.py ./001-results.json"
+          "E.g. python plot.py ./results.json"
     sys.exit(0)
 
 style = {

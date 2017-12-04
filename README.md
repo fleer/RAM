@@ -44,12 +44,12 @@ They can be loaded for further training or evaluation.
 To create images of the glimpses that the network uses after training, simply execute the evaluation script.
 The first parameter is the name of the configuration file and the second is the path to the network model & its weights.
 ```
-evaluate.py run_mnist ./model/001-network
+evaluate.py run_mnist ./model/network.h5
 ```
 
 To plot the accuracy of the classification over the number of trained epochs use the plotting script. 
 ```
-python plot.py ./001-results.json
+python plot.py ./results.json
 ```
 
 ## Classification of the standard MNIST dataset

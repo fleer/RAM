@@ -17,7 +17,7 @@ if len(sys.argv) > 1:
         sys.exit(0)
 else:
     print "Give Configuration File as additional argument! \n " \
-          "E.g. python evaluate.py run_mnist ./model/001-network"
+          "E.g. python evaluate.py run_mnist ./model/network.h5"
     sys.exit(0)
 
 save = True
@@ -47,7 +47,7 @@ ram.big_net(PARAMETERS.OPTIMIZER,PARAMETERS.LEARNING_RATE,PARAMETERS.MOMENTUM,
 
 if len(sys.argv) > 2:
     if ram.load_model('./', sys.argv[2]):
-        print("Loaded wights from " + sys.argv[2] + ".h5!")
+        print("Loaded wights from " + sys.argv[2] + "!")
     else:
         print("Weights from " + sys.argv[2] +
                      " could not be loaded!")
