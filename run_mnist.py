@@ -78,7 +78,7 @@ class PARAMETERS:
     #   =========================
     LOAD_MODEL = False
     MODEL_FILE_PATH = './MNIST_Results/'
-    MODEL_FILE = '001-network'
+    MODEL_FILE = 'network.h5'
 
 
     #   =========================
@@ -109,10 +109,7 @@ class PARAMETERS:
 def main():
     params = PARAMETERS
     dom_opt = MNIST_DOMAIN_OPTIONS
-    for i in range(1, 2):
-        exp = Experiment(params, dom_opt, "{0:03}".format(i) + "-results.json", "{0:03}".format(i) + "-network")
-        del exp
-
+    Experiment(params, dom_opt, "results.json", "network.h5")
 
 if __name__ == '__main__':
     main()

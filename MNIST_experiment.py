@@ -17,7 +17,7 @@ class Experiment():
     results = defaultdict(list)
 
 
-    def __init__(self, PARAMETERS, DOMAIN_OPTIONS, results_file="001-results.json", model_file="001-network"):
+    def __init__(self, PARAMETERS, DOMAIN_OPTIONS, results_file="results.json", model_file="network.h5"):
 
         logging.basicConfig(level=logging.INFO)
 
@@ -59,7 +59,7 @@ class Experiment():
 
         if PARAMETERS.LOAD_MODEL:
             if self.ram.load_model(PARAMETERS.MODEL_FILE_PATH, PARAMETERS.MODEL_FILE):
-                logging.info("Loaded model weigths from " + PARAMETERS.MODEL_FILE_PATH + PARAMETERS.MODEL_FILE + ".h5!")
+                logging.info("Loaded model weigths from " + PARAMETERS.MODEL_FILE_PATH + PARAMETERS.MODEL_FILE + "!")
             else:
                 logging.info("Weigts from " + PARAMETERS.MODEL_FILE_PATH + PARAMETERS.MODEL_FILE + " could not be loaded!")
                 sys.exit(0)

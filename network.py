@@ -351,7 +351,7 @@ class RAM():
         if not os.path.exists(path):
             os.makedirs(path)
         # serialize weights to HDF5
-        self.ram.save_weights(model_fn + ".h5")
+        self.ram.save_weights(model_fn)
 
     def load_model(self, path, filename):
         """
@@ -362,9 +362,9 @@ class RAM():
         :return: Loading successfull
         """
         model_fn = os.path.join(path, filename)
-        if  os.path.isfile(model_fn + '.h5'):
+        if  os.path.isfile(model_fn):
             # load weights into new model
-            self.ram.load_weights(model_fn + ".h5")
+            self.ram.load_weights(model_fn)
             return True
         else:
             return False
