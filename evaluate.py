@@ -59,6 +59,9 @@ else:
 plt.ion()
 plt.show()
 
+if MNIST_DOMAIN_OPTIONS.TRANSLATE:
+    mnist_size = MNIST_DOMAIN_OPTIONS.TRANSLATED_MNIST_SIZE
+
 X, Y= mnist.get_batch_test(batch_size)
 img = np.reshape(X, (batch_size, mnist_size, mnist_size, channels))
 for k in xrange(batch_size):
