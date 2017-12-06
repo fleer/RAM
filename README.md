@@ -60,9 +60,9 @@ python run_mnist.py
 ```
 The chosen parameters are the same as in [4].
 
-**Current Highscore:  86.83% +/- 0.3382 accuracy on the MNIST Test-Dataset.**
+**Current Highscore:  86.83% +/- 0.3382 accuracy on the MNIST test-dataset.**
 
-The plot below shows the accuracy for the test dataset over the number of trained epochs. 
+The plot below shows the accuracy for the test-dataset over the number of trained epochs. 
 ![Example](./MNIST_Results/MNIST_accuracy.png)
 
 Examples of the images and the corresponding glimpses used by the network are displayed in the table.
@@ -85,9 +85,9 @@ python run_translated_mnist.py
 ```
 The chosen parameters are the same as in [4].
 
-**Current Highscore:  90.52% +/- 0.2929 accuracy on the translated MNIST Test-Dataset.**
+**Current Highscore:  90.52% +/- 0.2929 accuracy on the translated MNIST test-dataset.**
 
-The plot below shows the accuracy for the test dataset over the number of trained epochs. 
+The plot below shows the accuracy for the test-dataset over the number of trained epochs. 
 ![Example](./MNIST_translated_Results/MNIST_translated_accuracy.png)
 
 Examples of the images and the corresponding glimpses used by the network are displayed in the table.
