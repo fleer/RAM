@@ -62,7 +62,7 @@ The chosen parameters are the same as in [4].
 
 **Current Highscore:  86.83% +/- 0.3382 accuracy on the MNIST Test-Dataset.**
 
-The plot below shows the training accuracy for the first 400 epochs. 
+The plot below shows the accuracy for the test dataset over the number of trained epochs. 
 ![Example](./MNIST_Results/MNIST_accuracy.png)
 
 Examples of the images and the corresponding glimpses used by the network are displayed in the table.
@@ -87,7 +87,7 @@ The chosen parameters are the same as in [4].
 
 **Current Highscore:  90.52% +/- 0.2929 accuracy on the translated MNIST Test-Dataset.**
 
-The plot below shows the training accuracy for the first 400 epochs. 
+The plot below shows the accuracy for the test dataset over the number of trained epochs. 
 ![Example](./MNIST_translated_Results/MNIST_translated_accuracy.png)
 
 Examples of the images and the corresponding glimpses used by the network are displayed in the table.
