@@ -98,7 +98,7 @@ class Experiment():
                 X, Y= self.mnist.get_batch_validation(self.batch_size)
             else:
                 X, Y= self.mnist.get_batch_test(self.batch_size)
-            loc = np.random.uniform(-1, 1,(self.batch_size, 2))
+            loc = self.ram.start_location()
             sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
             for n in range(self.nGlimpses):
                 zooms = self.mnist.glimpseSensor(X,sample_loc)
@@ -148,7 +148,7 @@ class Experiment():
             test_accuracy_sqrt = 0
             while total_epochs == self.mnist.dataset.train.epochs_completed:
                 X, Y= self.mnist.get_batch_train(self.batch_size)
-                loc = np.random.uniform(-1, 1, (self.batch_size, 2))
+                loc = self.ram.start_location()
                 sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
                 for n in range(1, self.nGlimpses):
                     zooms = self.mnist.glimpseSensor(X, sample_loc)
