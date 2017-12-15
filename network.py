@@ -219,6 +219,7 @@ class RAM():
 
         Log-Probability is achieved by using LogSoftMax activation
         """
+        self.ram.trainable = True
         #TODO: Implement baseline!
         return - y_true * y_pred
 
@@ -271,8 +272,8 @@ class RAM():
             loss_loc = ((sample_loc - y_pred)/(self.loc_std*self.loc_std)) * (R -b)
             return - loss_loc
         #TODO: Test alternative--> Only train dense layer of location output
-      #  self.ram.trainable = False
-      #  self.ram.get_layer('location_output').trainable = True
+        self.ram.trainable = False
+        self.ram.get_layer('location_output').trainable = True
         return loss
 
     def baseline_loss(self, action_p):
@@ -299,8 +300,8 @@ class RAM():
             R_out = K.cast(R, 'float32')
             return K.mean(K.square(R_out - y_pred), axis=-1)
         #TODO: Test alternative--> Only train dense layer of baseline output
-      #  self.ram.trainable = False
-      #  self.ram.get_layer('baseline_output').trainable = True
+        self.ram.trainable = False
+        self.ram.get_layer('baseline_output').trainable = True
         return loss
 
 
@@ -324,7 +325,7 @@ class RAM():
         :param true_a: One-Hot Encoding of correct action
         :return: Average Loss of training step
         """
-      #  self.ram.trainable = True
+        self.ram.trainable = True
 
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
 
