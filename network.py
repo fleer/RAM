@@ -248,7 +248,7 @@ class RAM():
             """
             # Compute Predicted and Correct action values
             max_p_y = K.argmax(action_p)
-            action = K.argmax(y_true)
+            action = K.cast(y_true, 'int64')
 
             # Get Reward for current step
             R = K.equal(max_p_y, action) # reward per example
@@ -330,7 +330,7 @@ class RAM():
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
 
         loss = self.ram.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input},
-                                       {'action_output': true_a, 'location_output': loc_input,
+                                       {'action_output': true_a, 'location_output': action,
                                         'baseline_output': action})
 
         return np.mean(loss)
