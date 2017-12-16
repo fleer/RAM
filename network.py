@@ -247,13 +247,15 @@ class RAM():
                      distribution
             """
             # Compute Predicted and Correct action values
-            max_p_y = K.argmax(action_p)
+            max_p_y = K.argmax(action_p, axis=-1)
+            max_p_y = K.stack([max_p_y, max_p_y], axis=-1)
+            #action = K.argmax(y_true, axis=-1)
             action = K.cast(y_true, 'int64')
 
             # Get Reward for current step
             R = K.equal(max_p_y, action) # reward per example
             R = K.cast(R, 'float32')
-            R_out = K.reshape(R, (self.batch_size,1))
+          #  R_out = K.reshape(R, (self.batch_size,1))
 
             #Uses the REINFORCE algorithm in sec 6. p.237-239)
             # Individual loss for location network
@@ -267,8 +269,8 @@ class RAM():
             sample_loc = K.random_normal(y_pred.shape, y_pred, self.loc_std)
 
             #TODO: Check how to deal with the 2 dims (x,y) of location
-            R = K.tile(R_out, [1, 2])
-            b = K.tile(baseline, [1, 2])
+          #  R = K.tile(R_out, [1, 2])
+            b = K.stack([baseline, baseline], axis=-1 )
             loss_loc = ((sample_loc - y_pred)/(self.loc_std*self.loc_std)) * (R -b)
             return - loss_loc
         #TODO: Test alternative--> Only train dense layer of location output
@@ -293,8 +295,8 @@ class RAM():
             """
             # Compute Predicted and Correct action values
             max_p_y = K.argmax(action_p)
-
             action = K.cast(y_true, 'int64')
+
             # Get Reward for current step
             R = K.equal(max_p_y, action) # reward per example
             R_out = K.cast(R, 'float32')
@@ -317,7 +319,7 @@ class RAM():
         K.set_value(self.ram.optimizer.lr, lr)
         return lr
 
-    def train(self, zooms, loc_input, true_a, action):
+    def train(self, zooms, loc_input, Y):
         """
         Train the Model!
         :param zooms: Current zooms, created using loc_input
@@ -327,11 +329,16 @@ class RAM():
         """
         self.ram.trainable = True
 
+        true_a = keras.utils.to_categorical(Y, 10)
+        # A little bit hacky, but we need the reward in the loss function
+        # instead of the location
+        loc_reward = np.stack([Y,Y],axis=-1)
+
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
 
         loss = self.ram.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input},
-                                       {'action_output': true_a, 'location_output': action,
-                                        'baseline_output': action})
+                                       {'action_output': true_a, 'location_output': loc_reward,
+                                        'baseline_output': Y})
 
         return np.mean(loss)
 

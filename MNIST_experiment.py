@@ -133,9 +133,9 @@ class Experiment():
         """
         total_epochs = 0
         # Initial Performance Check
-        accuracy, accuracy_std = self.performance_run(total_epochs)
-        logging.info("Epoch={:d}: >>> Test-Accuracy: {:.4f} "
-                     "+/- {:.6f}".format(total_epochs, accuracy, accuracy_std))
+        #accuracy, accuracy_std = self.performance_run(total_epochs)
+        #logging.info("Epoch={:d}: >>> Test-Accuracy: {:.4f} "
+        #              "+/- {:.6f}".format(total_epochs, accuracy, accuracy_std))
         num_train_data = len(self.mnist.dataset.train._images)
 
         patience_steps = 0
@@ -156,8 +156,7 @@ class Experiment():
                     #sample_loc = np.tanh(np.random.normal(loc, self.loc_std, loc.shape))
                     sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
                 zooms = self.mnist.glimpseSensor(X, sample_loc)
-                ath = keras.utils.to_categorical(Y, 10)
-                loss = self.ram.train(zooms, sample_loc, ath, Y)
+                loss = self.ram.train(zooms, sample_loc, Y)
                 action = np.argmax(a_prob, axis=-1)
                 test_accuracy += np.sum(np.equal(action,Y).astype(np.float32), axis=-1)
                 test_accuracy_sqrt+= np.sum((np.equal(action,Y).astype(np.float32))**2, axis=-1)
