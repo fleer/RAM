@@ -294,7 +294,7 @@ class RAM():
             :return: Baseline Loss
             """
             # Compute Predicted and Correct action values
-            max_p_y = K.argmax(action_p)
+            max_p_y = K.argmax(action_p, axis =-1)
             action = K.cast(y_true, 'int64')
 
             # Get Reward for current step
