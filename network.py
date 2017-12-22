@@ -272,7 +272,7 @@ class RAM():
           #  R = K.tile(R_out, [1, 2])
             b = K.stack([baseline, baseline], axis=-1 )
             loss_loc = ((sample_loc - y_pred)/(self.loc_std*self.loc_std)) * (R -b)
-            return - loss_loc
+            return - np.sum(loss_loc, axis=-1)
         #TODO: Test alternative--> Only train dense layer of location output
         self.ram.trainable = False
         self.ram.get_layer('location_output').trainable = True
