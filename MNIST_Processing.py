@@ -70,7 +70,7 @@ class MNIST():
             one_img = self.pad_to_bounding_box(one_img, offset, offset, \
                 offset + self.mnist_size, offset + self.mnist_size)
 
-            for i in xrange(self.depth):
+            for i in range(self.depth):
                 d = int(self.sensorBandwidth * (self.scaling ** i))
                 r = d/2
 
@@ -85,9 +85,10 @@ class MNIST():
                 assert not np.any(np.equal(zoom.shape, (0,0))), "Picture has size 0, location {}, depth {}".format(adjusted_loc, d)
 
                 # resize cropped image to (sensorBandwidth x sensorBandwidth)
-                zoom = cv2.resize(zoom, (self.sensorBandwidth, self.sensorBandwidth),
-                          interpolation=cv2.INTER_LINEAR)
-                zoom = np.reshape(zoom, (self.sensorBandwidth, self.sensorBandwidth))
+                if i > 0:
+                    zoom = cv2.resize(zoom, (self.sensorBandwidth, self.sensorBandwidth),
+                              interpolation=cv2.INTER_LINEAR)
+                #zoom = np.reshape(zoom, (self.sensorBandwidth, self.sensorBandwidth))
                 imgZooms.append(zoom)
 
             zooms.append(np.stack(imgZooms))
