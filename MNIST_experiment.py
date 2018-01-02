@@ -103,8 +103,10 @@ class Experiment():
             for n in range(self.nGlimpses):
                 zooms = self.mnist.glimpseSensor(X,sample_loc)
                 a_prob, loc = self.ram.choose_action(zooms, sample_loc)
-                #sample_loc = np.tanh(np.random.normal(loc, self.loc_std, loc.shape))
-                sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
+                # During evaluation, instead of sampling from the normal distribution, the output is
+                # taken to be the input, i.e. the mean.
+                #sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
+                sample_loc = np.maximum(-1., np.minimum(1., loc))
             action = np.argmax(a_prob, axis=-1)
             actions += np.sum(np.equal(action,Y).astype(np.float32), axis=-1)
             actions_sqrt += np.sum((np.equal(action,Y).astype(np.float32))**2, axis=-1)
@@ -153,7 +155,7 @@ class Experiment():
                 for n in range(1, self.nGlimpses):
                     zooms = self.mnist.glimpseSensor(X, sample_loc)
                     a_prob, loc = self.ram.choose_action(zooms, sample_loc)
-                    #sample_loc = np.tanh(np.random.normal(loc, self.loc_std, loc.shape))
+                    # During training, the output is sampled from a normal distribution with fixed standard deviation.
                     sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
                 zooms = self.mnist.glimpseSensor(X, sample_loc)
                 loss = self.ram.train(zooms, sample_loc, Y)
