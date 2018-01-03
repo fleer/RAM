@@ -50,10 +50,10 @@ class MNIST():
         assert not np.any(np.isnan(normLoc))," Locations have to be between 1, -1: {}".format(normLoc)
         assert np.any(np.abs(normLoc)<=1)," Locations have to be between 1, -1: {}".format(normLoc)
 
-        loc = normLoc * (self.unit_pixels * 2.)/ self.mnist_size # normLoc coordinates are between -1 and 1
+
+        loc = normLoc * (self.unit_pixels * 2.)/ float(self.mnist_size) # normLoc coordinates are between -1 and 1
         # Convert location [-1,1] into MNIST Coordinates:
         loc = np.around(((loc + 1) / 2.0) * self.mnist_size)
-
         loc = loc.astype(np.int32)
 
         img = np.reshape(img, (self.batch_size, self.mnist_size, self.mnist_size, self.channels))
@@ -64,7 +64,7 @@ class MNIST():
         for k in xrange(self.batch_size):
             imgZooms = []
             one_img = img[k,:,:,:]
-            offset = self.sensorBandwidth* (self.scaling ** (self.depth-1))
+            offset = 2*self.sensorBandwidth* (self.scaling ** (self.depth-1))
 
             # pad image with zeros
             one_img = self.pad_to_bounding_box(one_img, offset, offset, \
@@ -72,7 +72,7 @@ class MNIST():
 
             for i in range(self.depth):
                 d = int(self.sensorBandwidth * (self.scaling ** i))
-                r = d/2
+                r = d//2
 
                 loc_k = loc[k,:]
                 adjusted_loc = offset + loc_k - r
@@ -80,9 +80,11 @@ class MNIST():
                 one_img2 = np.reshape(one_img, (one_img.shape[0],\
                     one_img.shape[1]))
 
+
                 # crop image to (d x d)
                 zoom = one_img2[adjusted_loc[0]:adjusted_loc[0]+d, adjusted_loc[1]:adjusted_loc[1]+d]
                 assert not np.any(np.equal(zoom.shape, (0,0))), "Picture has size 0, location {}, depth {}".format(adjusted_loc, d)
+                assert len(zoom[0]) == d and len(zoom[1]) == d, "Glimpse has the dims: {}".format(zoom.shape)
 
                 # resize cropped image to (sensorBandwidth x sensorBandwidth)
                 if i > 0:
@@ -90,9 +92,10 @@ class MNIST():
                               interpolation=cv2.INTER_LINEAR)
                 #zoom = np.reshape(zoom, (self.sensorBandwidth, self.sensorBandwidth))
                 imgZooms.append(zoom)
-
             zooms.append(np.stack(imgZooms))
 
+        shapes = set(arr.shape for arr in zooms)
+        assert len(shapes) == 1, "zooms have different shapes: {}".format(zooms)
         zooms = np.stack(zooms)
 
         return zooms
