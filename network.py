@@ -36,7 +36,7 @@ class RAM():
         self.min_lr = min_lr
         self.lr_decay = lr_decay
         self.lr = lr
-        self.loc_std = loc_std
+        self.loc_std = 2*loc_std
         # Learning Rate Decay
         if self.lr_decay != 0:
             self.lr_decay_rate = ((lr - min_lr) /
