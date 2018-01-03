@@ -46,7 +46,7 @@ class MNIST_DOMAIN_OPTIONS:
     # Defines how far the center of the glimpse
     # can reach the borders
     # UNIT_PIXELS = 13 --> g_c \in [2,27] for 28x28x1 images
-    UNIT_PIXELS = 13
+    UNIT_PIXELS = 12
     # Translated MNIST
     TRANSLATE = False
     # Size of each image: MNIST_SIZE x MNIST_SIZE
