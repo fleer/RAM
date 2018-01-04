@@ -53,7 +53,7 @@ class MNIST():
 
         loc = normLoc * (self.unit_pixels * 2.)/ float(self.mnist_size) # normLoc coordinates are between -1 and 1
         # Convert location [-1,1] into MNIST Coordinates:
-        loc = np.around(((loc + 1) / 2.0) * self.mnist_size)
+        loc = np.around(((loc + 1) / 2.) * self.mnist_size)
         loc = loc.astype(np.int32)
 
         img = np.reshape(img, (self.batch_size, self.mnist_size, self.mnist_size, self.channels))
@@ -64,21 +64,26 @@ class MNIST():
         for k in xrange(self.batch_size):
             imgZooms = []
             one_img = img[k,:,:,:]
-            offset = 2*self.sensorBandwidth* (self.scaling ** (self.depth-1))
+            offset = self.sensorBandwidth* (self.scaling ** (self.depth-1))
 
             # pad image with zeros
             one_img = self.pad_to_bounding_box(one_img, offset, offset, \
-                offset + self.mnist_size, offset + self.mnist_size)
+                2*offset + self.mnist_size, 2*offset + self.mnist_size)
 
             for i in range(self.depth):
                 d = int(self.sensorBandwidth * (self.scaling ** i))
                 r = d//2
 
+                print "d: {}".format(d)
+                print "r: {}".format(r)
                 loc_k = loc[k,:]
+                print "origLoc: {}".format(loc_k)
                 adjusted_loc = offset + loc_k - r
+                print "loc: {}".format(adjusted_loc)
 
                 one_img2 = np.reshape(one_img, (one_img.shape[0],\
                     one_img.shape[1]))
+                print "img: {}".format(one_img2.shape)
 
 
                 # crop image to (d x d)
