@@ -74,17 +74,11 @@ class MNIST():
                 d = int(self.sensorBandwidth * (self.scaling ** i))
                 r = d//2
 
-                print "d: {}".format(d)
-                print "r: {}".format(r)
                 loc_k = loc[k,:]
-                print "origLoc: {}".format(loc_k)
                 adjusted_loc = offset + loc_k - r
-                print "loc: {}".format(adjusted_loc)
 
                 one_img2 = np.reshape(one_img, (one_img.shape[0],\
                     one_img.shape[1]))
-                print "img: {}".format(one_img2.shape)
-
 
                 # crop image to (d x d)
                 zoom = one_img2[adjusted_loc[0]:adjusted_loc[0]+d, adjusted_loc[1]:adjusted_loc[1]+d]
