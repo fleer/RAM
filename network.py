@@ -11,7 +11,7 @@ class RAM():
     """
 
 
-    def __init__(self, totalSensorBandwidth, batch_size, glimpses, lr, lr_decay, min_lr, loc_std):
+    def __init__(self, totalSensorBandwidth, batch_size, glimpses, pixel_scaling, lr, lr_decay, min_lr, loc_std):
         """
         Intialize parameters, determine the learning rate decay and build the RAM
         :param totalSensorBandwidth: The length of the networks input vector
@@ -37,6 +37,7 @@ class RAM():
         self.lr_decay = lr_decay
         self.lr = lr
         self.loc_std = loc_std
+        self.pixel_scaling = pixel_scaling
 
         self.training = True
         # Learning Rate Decay
@@ -97,7 +98,7 @@ class RAM():
         #   Core Network
         #   ================
         rnn_input = keras.layers.Reshape((256,1))(glimpse_network_output)
-        model_output = keras.layers.recurrent.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',
+        model_output = keras.layers.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',
                                                 return_sequences=False, stateful=True, unroll=True,
                                                 kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                                 bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
@@ -125,7 +126,6 @@ class RAM():
                                  name='location_mean'
                                  )(model_output)
         location_out = keras.layers.Lambda(lambda x: self.gaussian_pdf(x), name='location_output')(location_mean)
-        #location_out= keras.layers.Lambda(lambda x: self.hard_tanh(x), )(location_gauss)
 
 
         #   ================
@@ -141,6 +141,9 @@ class RAM():
 
         # Create the model
         self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out, baseline_output])
+
+        # Print Summary
+        self.ram.summary()
 
         #   ================
         #   Location Network at timestep 0
@@ -186,15 +189,13 @@ class RAM():
         else:
             raise ValueError("Unrecognized update: {}".format(optimizer))
 
-        # Print Summary
-        self.ram.summary()
 
     def gaussian_pdf(self, x):
         if self.training:
             g = x + K.random_normal(shape=K.shape(x), mean=0., stddev=self.loc_std)
         else:
             g = x
-        return self.hard_tanh(g)
+        return self.hard_tanh(g) * self.pixel_scaling # normLoc coordinates are between -1 and 1
 
     def hard_tanh(self, x):
         """Segment-wise linear approximation of tanh.

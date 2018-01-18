@@ -49,9 +49,8 @@ class MNIST():
         assert np.any(np.abs(normLoc)<=1)," Locations have to be between 1, -1: {}".format(normLoc)
 
 
-        loc = normLoc * (self.unit_pixels * 2.)/ float(self.mnist_size) # normLoc coordinates are between -1 and 1
         # Convert location [-1,1] into MNIST Coordinates:
-        loc = np.around(((loc + 1) / 2.) * self.mnist_size)
+        loc = np.around(((normLoc + 1) / 2.) * self.mnist_size)
         loc = loc.astype(np.int32)
 
         img = np.reshape(img, (self.batch_size, self.mnist_size, self.mnist_size, self.channels))
