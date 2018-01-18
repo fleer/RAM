@@ -29,7 +29,6 @@ class Experiment():
         channels = DOMAIN_OPTIONS.CHANNELS
         scaling_factor = DOMAIN_OPTIONS.SCALING_FACTOR
         sensorResolution = DOMAIN_OPTIONS.SENSOR
-        self.loc_std = DOMAIN_OPTIONS.LOC_STD
         self.nZooms = DOMAIN_OPTIONS.DEPTH
         self.nGlimpses = DOMAIN_OPTIONS.NGLIMPSES
 
@@ -43,7 +42,7 @@ class Experiment():
         #   ================
 
         self.mnist = MNIST(mnist_size, self.batch_size, channels, scaling_factor, sensorResolution,
-                           self.nZooms, self.loc_std, DOMAIN_OPTIONS.UNIT_PIXELS,
+                           self.nZooms, DOMAIN_OPTIONS.UNIT_PIXELS,
                            DOMAIN_OPTIONS.TRANSLATE, DOMAIN_OPTIONS.TRANSLATED_MNIST_SIZE)
 
         #   ================
@@ -52,7 +51,7 @@ class Experiment():
 
         self.ram = RAM(totalSensorBandwidth, self.batch_size, self.nGlimpses,
                        PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY,
-                       PARAMETERS.MIN_LEARNING_RATE, DOMAIN_OPTIONS.LOC_STD)
+                       PARAMETERS.MIN_LEARNING_RATE, 2*DOMAIN_OPTIONS.LOC_STD)
 
         self.ram.big_net(PARAMETERS.OPTIMIZER,PARAMETERS.LEARNING_RATE,PARAMETERS.MOMENTUM,
                          PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE)
@@ -86,6 +85,7 @@ class Experiment():
         """
         actions = 0.
         actions_sqrt = 0.
+        self.ram.training = False
         if validation:
             num_data = len(self.mnist.dataset.validation._images)
             batches_in_epoch = num_data // self.batch_size
@@ -99,14 +99,12 @@ class Experiment():
             else:
                 X, Y= self.mnist.get_batch_test(self.batch_size)
             loc = self.ram.start_location()
-            sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
             for n in range(self.nGlimpses):
-                zooms = self.mnist.glimpseSensor(X,sample_loc)
-                a_prob, loc = self.ram.choose_action(zooms, sample_loc)
+                zooms = self.mnist.glimpseSensor(X, loc)
+                a_prob, loc = self.ram.choose_action(zooms, loc)
                 # During evaluation, instead of sampling from the normal distribution, the output is
                 # taken to be the input, i.e. the mean.
                 #sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
-                sample_loc = np.maximum(-1., np.minimum(1., loc))
             action = np.argmax(a_prob, axis=-1)
             actions += np.sum(np.equal(action,Y).astype(np.float32), axis=-1)
             actions_sqrt += np.sum((np.equal(action,Y).astype(np.float32))**2, axis=-1)
@@ -134,6 +132,7 @@ class Experiment():
         :return:
         """
         total_epochs = 0
+        self.ram.training = True
         # Initial Performance Check
         accuracy, accuracy_std = self.performance_run(total_epochs)
         logging.info("Epoch={:d}: >>> Test-Accuracy: {:.4f} "
@@ -151,14 +150,11 @@ class Experiment():
             while total_epochs == self.mnist.dataset.train.epochs_completed:
                 X, Y= self.mnist.get_batch_train(self.batch_size)
                 loc = self.ram.start_location()
-                sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
                 for n in range(1, self.nGlimpses):
-                    zooms = self.mnist.glimpseSensor(X, sample_loc)
-                    a_prob, loc = self.ram.choose_action(zooms, sample_loc)
-                    # During training, the output is sampled from a normal distribution with fixed standard deviation.
-                    sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
-                zooms = self.mnist.glimpseSensor(X, sample_loc)
-                loss = self.ram.train(zooms, sample_loc, Y)
+                    zooms = self.mnist.glimpseSensor(X, loc)
+                    a_prob, loc = self.ram.choose_action(zooms, loc)
+                zooms = self.mnist.glimpseSensor(X, loc)
+                loss = self.ram.train(zooms, loc, Y)
                 action = np.argmax(a_prob, axis=-1)
                 test_accuracy += np.sum(np.equal(action,Y).astype(np.float32), axis=-1)
                 test_accuracy_sqrt+= np.sum((np.equal(action,Y).astype(np.float32))**2, axis=-1)

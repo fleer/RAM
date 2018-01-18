@@ -36,7 +36,9 @@ class RAM():
         self.min_lr = min_lr
         self.lr_decay = lr_decay
         self.lr = lr
-        self.loc_std = 2*loc_std
+        self.loc_std = loc_std
+
+        self.training = True
         # Learning Rate Decay
         if self.lr_decay != 0:
             self.lr_decay_rate = ((lr - min_lr) /
@@ -113,14 +115,16 @@ class RAM():
         #   Location Network
         #   ================
 
-        location_out = keras.layers.Dense(2,
+        location_mean = keras.layers.Dense(2,
                                  activation=self.hard_tanh,
                                  #kernel_initializer=keras.initializers.glorot_uniform(),
                                  kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                 # bias_initializer=keras.initializers.glorot_uniform(),
-                                 name='location_output',
                                  )(model_output)
+        location_gauss = keras.layers.Lambda(lambda x: self.gaussian_pdf(x))(location_mean)
+        location_out= keras.layers.Lambda(lambda x: self.hard_tanh(x), name='location_output')(location_gauss)
+
 
         #   ================
         #   Baseline Network
@@ -160,28 +164,34 @@ class RAM():
         if optimizer == "rmsprop":
             self.ram.compile(optimizer=keras.optimizers.rmsprop(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
                              loss={'action_output': self.nnl_criterion,
-                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
+                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean),
                                    'baseline_output': self.baseline_loss(action_p=action_out)})
         elif optimizer == "adam":
             self.ram.compile(optimizer=keras.optimizers.adam(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
                              loss={'action_output': self.nnl_criterion,
-                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
+                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean),
                                    'baseline_output': self.baseline_loss(action_p=action_out)})
         elif optimizer == "adadelta":
             self.ram.compile(optimizer=keras.optimizers.adadelta(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
                              loss={'action_output': self.nnl_criterion,
-                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
+                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean),
                                    'baseline_output': self.baseline_loss(action_p=action_out)})
         elif optimizer == 'sgd':
             self.ram.compile(optimizer=keras.optimizers.SGD(lr=lr, momentum=momentum, nesterov=False, clipvalue=clipvalue, clipnorm=clipnorm),
                              loss={'action_output': self.nnl_criterion,
-                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
+                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean),
                                    'baseline_output': self.baseline_loss(action_p=action_out)})
         else:
             raise ValueError("Unrecognized update: {}".format(optimizer))
 
         # Print Summary
         self.ram.summary()
+
+    def gaussian_pdf(self, x):
+        if self.training:
+            return x + K.random_normal(shape=K.shape(x), mean=0., stddev=self.loc_std)
+        else:
+            return x
 
     def hard_tanh(self, x):
         """Segment-wise linear approximation of tanh.
@@ -223,7 +233,7 @@ class RAM():
         #TODO: Implement baseline!
         return - y_true * y_pred
 
-    def reinforce_loss(self, action_p, baseline):
+    def reinforce_loss(self, action_p, baseline, mean):
         """
         :param action_p: Network output of action network
         :param baseline: Network putput of baseline network
@@ -265,13 +275,10 @@ class RAM():
             # -------------- = -------- with m = mean, x = sample, s = standard_deviation
             #       d m          s**2
 
-            #Sample Location, based on current mean
-            sample_loc = K.random_normal(y_pred.shape, y_pred, self.loc_std)
-
             #TODO: Check how to deal with the 2 dims (x,y) of location
           #  R = K.tile(R_out, [1, 2])
             b = K.stack([baseline, baseline], axis=-1 )
-            loss_loc = ((sample_loc - y_pred)/(self.loc_std*self.loc_std)) * (R -b)
+            loss_loc = ((y_pred - mean)/(self.loc_std*self.loc_std)) * (R -b)
             return - loss_loc
         #TODO: Test alternative--> Only train dense layer of location output
         self.ram.trainable = False
