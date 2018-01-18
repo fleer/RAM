@@ -121,10 +121,11 @@ class RAM():
                                  kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                 # bias_initializer=keras.initializers.glorot_uniform(),
+                                 trainable=True,
                                  name='location_mean'
                                  )(model_output)
-        location_gauss = keras.layers.Lambda(lambda x: self.gaussian_pdf(x))(location_mean)
-        location_out= keras.layers.Lambda(lambda x: self.hard_tanh(x), name='location_output')(location_gauss)
+        location_out = keras.layers.Lambda(lambda x: self.gaussian_pdf(x), activation=self.hard_tanh, name='location_output')(location_mean)
+        #location_out= keras.layers.Lambda(lambda x: self.hard_tanh(x), )(location_gauss)
 
 
         #   ================
@@ -230,8 +231,8 @@ class RAM():
 
         Log-Probability is achieved by using LogSoftMax activation
         """
-        self.ram.trainable = True
-        self.ram.get_layer('location_mean').trainable = False
+        #self.ram.trainable = True
+        #self.ram.get_layer('location_mean').trainable = False
         #TODO: Implement baseline!
         return - y_true * y_pred
 
@@ -283,8 +284,8 @@ class RAM():
             loss_loc = ((y_pred - mean)/(self.loc_std*self.loc_std)) * (R -b)
             return - loss_loc
         #TODO: Test alternative--> Only train dense layer of location output
-        self.ram.trainable = False
-        self.ram.get_layer('location_mean').trainable = True
+        #self.ram.trainable = False
+        #self.ram.get_layer('location_mean').trainable = True
         return loss
 
     def baseline_loss(self, action_p):
@@ -336,7 +337,7 @@ class RAM():
         :param true_a: One-Hot Encoding of correct action
         :return: Average Loss of training step
         """
-        self.ram.trainable = True
+        #self.ram.trainable = True
 
         true_a = keras.utils.to_categorical(Y, 10)
         # A little bit hacky, but we need the reward in the loss function
