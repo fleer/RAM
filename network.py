@@ -124,7 +124,7 @@ class RAM():
                                  trainable=True,
                                  name='location_mean'
                                  )(model_output)
-        location_out = keras.layers.Lambda(lambda x: self.gaussian_pdf(x), activation=self.hard_tanh, name='location_output')(location_mean)
+        location_out = keras.layers.Lambda(lambda x: self.gaussian_pdf(x), name='location_output')(location_mean)
         #location_out= keras.layers.Lambda(lambda x: self.hard_tanh(x), )(location_gauss)
 
 
@@ -191,9 +191,10 @@ class RAM():
 
     def gaussian_pdf(self, x):
         if self.training:
-            return x + K.random_normal(shape=K.shape(x), mean=0., stddev=self.loc_std)
+            g = x + K.random_normal(shape=K.shape(x), mean=0., stddev=self.loc_std)
         else:
-            return x
+            g = x
+        return self.hard_tanh(g)
 
     def hard_tanh(self, x):
         """Segment-wise linear approximation of tanh.
