@@ -283,7 +283,7 @@ class RAM():
             return - loss_loc
         #TODO: Test alternative--> Only train dense layer of location output
         self.ram.trainable = False
-        self.ram.get_layer('location_output').trainable = True
+        self.ram.get_layer('location_mean').trainable = True
         return loss
 
     def baseline_loss(self, action_p):
