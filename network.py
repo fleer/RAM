@@ -121,6 +121,7 @@ class RAM():
                                  kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                 # bias_initializer=keras.initializers.glorot_uniform(),
+                                 name='location_mean'
                                  )(model_output)
         location_gauss = keras.layers.Lambda(lambda x: self.gaussian_pdf(x))(location_mean)
         location_out= keras.layers.Lambda(lambda x: self.hard_tanh(x), name='location_output')(location_gauss)
@@ -355,8 +356,9 @@ class RAM():
         :return:
         """
         self.ram.reset_states()
+
     def start_location(self):
-        w = self.ram.get_layer("location_output").get_weights()
+        w = self.ram.get_layer("location_mean").get_weights()
         self.loc_t0.set_weights(w)
         h0 = np.zeros((self.batch_size,256))
         return self.loc_t0.predict_on_batch(h0)
