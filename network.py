@@ -231,6 +231,7 @@ class RAM():
         Log-Probability is achieved by using LogSoftMax activation
         """
         self.ram.trainable = True
+        self.ram.get_layer('location_mean').trainable = False
         #TODO: Implement baseline!
         return - y_true * y_pred
 
