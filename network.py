@@ -233,8 +233,8 @@ class RAM():
 
         Log-Probability is achieved by using LogSoftMax activation
         """
-        #self.ram.trainable = True
-        #self.ram.get_layer('location_mean').trainable = False
+        self.ram.trainable = True
+        self.ram.get_layer('location_mean').trainable = False
         #TODO: Implement baseline!
         return - y_true * y_pred
 
@@ -286,8 +286,8 @@ class RAM():
             loss_loc = ((y_pred - mean)/(self.loc_std*self.loc_std)) * (R -b)
             return - loss_loc
         #TODO: Test alternative--> Only train dense layer of location output
-        #self.ram.trainable = False
-        #self.ram.get_layer('location_mean').trainable = True
+        self.ram.trainable = False
+        self.ram.get_layer('location_mean').trainable = True
         return loss
 
     def baseline_loss(self, action_p):
@@ -339,7 +339,7 @@ class RAM():
         :param true_a: One-Hot Encoding of correct action
         :return: Average Loss of training step
         """
-        #self.ram.trainable = True
+        self.ram.trainable = True
 
         true_a = keras.utils.to_categorical(Y, 10)
         # A little bit hacky, but we need the reward in the loss function
@@ -360,7 +360,6 @@ class RAM():
         :return:
         """
         self.ram.reset_states()
-
     def start_location(self):
         w = self.ram.get_layer("location_mean").get_weights()
         self.loc_t0.set_weights(w)
