@@ -283,7 +283,8 @@ class RAM():
 
             #TODO: Check how to deal with the 2 dims (x,y) of location
           #  R = K.tile(R_out, [1, 2])
-            b = K.stack([baseline, baseline], axis=-1 )
+            b = K.tile(baseline, [1, 2])
+           # b = K.stack([baseline, baseline], axis=-1 )
             loss_loc = ((y_pred - mean)/(self.loc_std*self.loc_std)) * (R -b)
             return - loss_loc
         #TODO: Test alternative--> Only train dense layer of location output
