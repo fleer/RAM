@@ -39,12 +39,15 @@ class RAM():
         self.loc_std = loc_std
         self.pixel_scaling = pixel_scaling
 
-        self.training = True
+        self.training = K.variable(1)
         # Learning Rate Decay
         if self.lr_decay != 0:
             self.lr_decay_rate = ((lr - min_lr) /
                                  lr_decay)
 
+    def set_training(self,value):
+        assert value == 0 or value == 1
+        K.set_value(self.training, value)
 
     def big_net(self, optimizer, lr, momentum, clipnorm, clipvalue):
         """
@@ -125,7 +128,7 @@ class RAM():
                                  trainable=True,
                                  name='location_mean'
                                  )(model_output)
-        location_out = keras.layers.Lambda(lambda x: self.gaussian_pdf(x), name='location_output')(location_mean)
+        location_out = keras.layers.Lambda(self.gaussian_pdf, name='location_output')(location_mean)
 
 
         #   ================
@@ -161,7 +164,7 @@ class RAM():
                                              name='location_output_t0',
                                              trainable=False
                                              )(hidden_state_in_0)
-        location_out_t0 = keras.layers.Lambda(lambda x: self.gaussian_pdf(x), name='location_output')(location_out_t)
+        location_out_t0 = keras.layers.Lambda(self.gaussian_pdf)(location_out_t)
 
         # Create Location model at timestep 0
         self.loc_t0 = keras.models.Model(inputs=hidden_state_in_0, outputs=location_out_t0)
@@ -192,10 +195,7 @@ class RAM():
 
 
     def gaussian_pdf(self, x):
-        if self.training:
-            g = x + K.random_normal(shape=K.shape(x), mean=0., stddev=self.loc_std)
-        else:
-            g = x
+        g = keras.backend.switch(self.training, x, x + K.random_normal(shape=K.shape(x), mean=0., stddev=self.loc_std))
         return self.hard_tanh(g) * self.pixel_scaling # normLoc coordinates are between -1 and 1
 
     def hard_tanh(self, x):
@@ -361,9 +361,10 @@ class RAM():
         :return:
         """
         self.ram.reset_states()
+
     def start_location(self):
         w = self.ram.get_layer("location_mean").get_weights()
-        self.loc_t0.set_weights(w)
+        self.loc_t0.get_layer("location_output_t0").set_weights(w)
         h0 = np.zeros((self.batch_size,256))
         return self.loc_t0.predict_on_batch(h0)
 

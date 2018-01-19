@@ -50,7 +50,7 @@ class MNIST():
 
 
         # Convert location [-1,1] into MNIST Coordinates:
-        loc = np.around(((normLoc + 1) / 2.) * self.mnist_size)
+        loc = np.around(((normLoc + 1.) / 2.) * self.mnist_size)
         loc = loc.astype(np.int32)
 
         img = np.reshape(img, (self.batch_size, self.mnist_size, self.mnist_size, self.channels))
