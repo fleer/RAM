@@ -152,7 +152,7 @@ class RAM():
         #TODO: Find a better solution
 
         hidden_state_in_0 = keras.layers.Input(shape=(256,))
-        location_out_t0 = keras.layers.Dense(2,
+        location_out_t = keras.layers.Dense(2,
                                              activation=self.hard_tanh,
                                              #kernel_initializer=keras.initializers.glorot_uniform(),
                                              kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
@@ -161,6 +161,7 @@ class RAM():
                                              name='location_output_t0',
                                              trainable=False
                                              )(hidden_state_in_0)
+        location_out_t0 = keras.layers.Lambda(lambda x: self.gaussian_pdf(x), name='location_output')(location_out_t)
 
         # Create Location model at timestep 0
         self.loc_t0 = keras.models.Model(inputs=hidden_state_in_0, outputs=location_out_t0)
