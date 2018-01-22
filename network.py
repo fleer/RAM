@@ -163,22 +163,22 @@ class RAM():
         # Compile the model
         if optimizer == "rmsprop":
             self.ram.compile(optimizer=keras.optimizers.rmsprop(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.nnl_criterion,
+                             loss={'action_output': self.nnl_criterion(baseline=baseline_output),
                                    'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
                                    'baseline_output': self.baseline_loss(action_p=action_out)})
         elif optimizer == "adam":
             self.ram.compile(optimizer=keras.optimizers.adam(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.nnl_criterion,
+                             loss={'action_output': self.nnl_criterion(baseline=baseline_output),
                                    'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
                                    'baseline_output': self.baseline_loss(action_p=action_out)})
         elif optimizer == "adadelta":
             self.ram.compile(optimizer=keras.optimizers.adadelta(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.nnl_criterion,
+                             loss={'action_output':  self.nnl_criterion(baseline=baseline_output),
                                    'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
                                    'baseline_output': self.baseline_loss(action_p=action_out)})
         elif optimizer == 'sgd':
             self.ram.compile(optimizer=keras.optimizers.SGD(lr=lr, momentum=momentum, nesterov=False, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.nnl_criterion,
+                             loss={'action_output': self.nnl_criterion(baseline=baseline_output),
                                    'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
                                    'baseline_output': self.baseline_loss(action_p=action_out)})
         else:
@@ -214,7 +214,7 @@ class RAM():
         #return x - K.log(K.sum(K.exp(x), axis=axis, keepdims=True))
 
 
-    def nnl_criterion(self, y_true, y_pred):
+    def nnl_criterion(self, baseline):
         """
         Negative log likelihood (NNL) criterion
         :param y_true: True Value
@@ -223,10 +223,10 @@ class RAM():
 
         Log-Probability is achieved by using LogSoftMax activation
         """
-        #self.ram.trainable = True
-        #self.ram.get_layer('location_mean').trainable = False
-        #TODO: Implement baseline!
-        return - y_true * y_pred
+        def loss(y_true, y_pred):
+            return - y_true * y_pred * (K.ones_like(baseline) - baseline)
+        return loss
+
 
     def reinforce_loss(self, action_p, baseline):
         """
