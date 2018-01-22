@@ -109,6 +109,8 @@ class RAM():
                                  bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  name='action_output',
                                  )(model_output)
+
+        stop_grad = keras.layers.Lambda(lambda x: K.stop_gradient(x))(model_output)
         #   ================
         #   Location Network
         #   ================
@@ -120,7 +122,7 @@ class RAM():
                                  bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                 # bias_initializer=keras.initializers.glorot_uniform(),
                                  name='location_output',
-                                 )(model_output)
+                                 )(stop_grad)
 
         #   ================
         #   Baseline Network
@@ -131,7 +133,7 @@ class RAM():
                                  kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  name='baseline_output',
-                                         )(model_output)
+                                         )(stop_grad)
 
         # Create the model
         self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out, baseline_output])
@@ -219,7 +221,8 @@ class RAM():
 
         Log-Probability is achieved by using LogSoftMax activation
         """
-        self.ram.trainable = True
+        #self.ram.trainable = True
+        #self.ram.get_layer('location_mean').trainable = False
         #TODO: Implement baseline!
         return - y_true * y_pred
 
@@ -274,8 +277,8 @@ class RAM():
             loss_loc = ((sample_loc - y_pred)/(self.loc_std*self.loc_std)) * (R -b)
             return - loss_loc
         #TODO: Test alternative--> Only train dense layer of location output
-        self.ram.trainable = False
-        self.ram.get_layer('location_output').trainable = True
+        #self.ram.trainable = False
+        #self.ram.get_layer('location_mean').trainable = True
         return loss
 
     def baseline_loss(self, action_p):
@@ -294,7 +297,7 @@ class RAM():
             :return: Baseline Loss
             """
             # Compute Predicted and Correct action values
-            max_p_y = K.argmax(action_p)
+            max_p_y = K.argmax(action_p, axis=-1)
             action = K.cast(y_true, 'int64')
 
             # Get Reward for current step
@@ -302,8 +305,8 @@ class RAM():
             R_out = K.cast(R, 'float32')
             return K.mean(K.square(R_out - y_pred), axis=-1)
         #TODO: Test alternative--> Only train dense layer of baseline output
-        self.ram.trainable = False
-        self.ram.get_layer('baseline_output').trainable = True
+        #self.ram.trainable = False
+        #self.ram.get_layer('baseline_output').trainable = True
         return loss
 
 
@@ -327,18 +330,19 @@ class RAM():
         :param true_a: One-Hot Encoding of correct action
         :return: Average Loss of training step
         """
-        self.ram.trainable = True
+        #self.ram.trainable = True
 
-        true_a = keras.utils.to_categorical(Y, 10)
         # A little bit hacky, but we need the reward in the loss function
         # instead of the location
         loc_reward = np.stack([Y,Y],axis=-1)
 
+        one_hot = keras.utils.to_categorical(Y, 10)
+
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
 
         loss = self.ram.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input},
-                                       {'action_output': true_a, 'location_output': loc_reward,
-                                        'baseline_output': Y})
+                                       {'action_output': one_hot, 'location_output': loc_reward,
+                                        'baseline_output': np.reshape(Y, (self.batch_size,1))})
 
         return np.mean(loss)
 
