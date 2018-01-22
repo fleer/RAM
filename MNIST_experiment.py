@@ -50,9 +50,14 @@ class Experiment():
         #   Creating the RAM
         #   ================
 
-        self.ram = RAM(totalSensorBandwidth, self.batch_size, self.nGlimpses,
+        if DOMAIN_OPTIONS.TRANSLATE:
+            pixel_scaling = (DOMAIN_OPTIONS.UNIT_PIXELS * 2.)/ float(DOMAIN_OPTIONS.TRANSLATED_MNIST_SIZE)
+        else:
+            pixel_scaling = (DOMAIN_OPTIONS.UNIT_PIXELS * 2.)/ float(DOMAIN_OPTIONS.MNIST_SIZE)
+
+        self.ram = RAM(totalSensorBandwidth, self.batch_size, self.nGlimpses, pixel_scaling,
                        PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY,
-                       PARAMETERS.MIN_LEARNING_RATE, DOMAIN_OPTIONS.LOC_STD)
+                       PARAMETERS.MIN_LEARNING_RATE, 2*DOMAIN_OPTIONS.LOC_STD)
 
         self.ram.big_net(PARAMETERS.OPTIMIZER,PARAMETERS.LEARNING_RATE,PARAMETERS.MOMENTUM,
                          PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE)

@@ -11,7 +11,7 @@ class RAM():
     """
 
 
-    def __init__(self, totalSensorBandwidth, batch_size, glimpses, lr, lr_decay, min_lr, loc_std):
+    def __init__(self, totalSensorBandwidth, batch_size, glimpses, pixel_scaling, lr, lr_decay, min_lr, loc_std):
         """
         Intialize parameters, determine the learning rate decay and build the RAM
         :param totalSensorBandwidth: The length of the networks input vector
@@ -36,7 +36,8 @@ class RAM():
         self.min_lr = min_lr
         self.lr_decay = lr_decay
         self.lr = lr
-        self.loc_std = 2*loc_std
+        self.loc_std = loc_std
+        self.pixel_scaling = pixel_scaling
         # Learning Rate Decay
         if self.lr_decay != 0:
             self.lr_decay_rate = ((lr - min_lr) /
@@ -115,14 +116,14 @@ class RAM():
         #   Location Network
         #   ================
 
-        location_out = keras.layers.Dense(2,
+        location_out_0 = keras.layers.Dense(2,
                                  activation=self.hard_tanh,
                                  #kernel_initializer=keras.initializers.glorot_uniform(),
                                  kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                 # bias_initializer=keras.initializers.glorot_uniform(),
-                                 name='location_output',
                                  )(stop_grad)
+        location_out = keras.layers.Lambda(lambda x: x*self.pixel_scaling, name='location_output')(location_out_0)
 
         #   ================
         #   Baseline Network
@@ -145,7 +146,7 @@ class RAM():
         #TODO: Find a better solution
 
         hidden_state_in_0 = keras.layers.Input(shape=(256,))
-        location_out_t0 = keras.layers.Dense(2,
+        location_out_t = keras.layers.Dense(2,
                                              activation=self.hard_tanh,
                                              #kernel_initializer=keras.initializers.glorot_uniform(),
                                              kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
@@ -154,6 +155,7 @@ class RAM():
                                              name='location_output_t0',
                                              trainable=False
                                              )(hidden_state_in_0)
+        location_out_t0 = keras.layers.Lambda(lambda x: x*self.pixel_scaling)(location_out_t)
 
         # Create Location model at timestep 0
         self.loc_t0 = keras.models.Model(inputs=hidden_state_in_0, outputs=location_out_t0)
