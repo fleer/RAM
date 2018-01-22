@@ -137,7 +137,6 @@ class Experiment():
         :return:
         """
         total_epochs = 0
-        self.ram.set_training(1)
         # Initial Performance Check
         #accuracy, accuracy_std = self.performance_run(total_epochs)
         #logging.info("Epoch={:d}: >>> Test-Accuracy: {:.4f} "
@@ -153,6 +152,7 @@ class Experiment():
             test_accuracy = 0
             test_accuracy_sqrt = 0
             while total_epochs == self.mnist.dataset.train.epochs_completed:
+                self.ram.set_training(1)
                 X, Y= self.mnist.get_batch_train(self.batch_size)
                 loc = self.ram.start_location()
                 for n in range(1, self.nGlimpses):
