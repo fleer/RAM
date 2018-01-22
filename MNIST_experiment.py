@@ -99,14 +99,14 @@ class Experiment():
             else:
                 X, Y= self.mnist.get_batch_test(self.batch_size)
             loc = self.ram.start_location()
-            sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
+           # sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
             for n in range(self.nGlimpses):
-                zooms = self.mnist.glimpseSensor(X,sample_loc)
-                a_prob, loc = self.ram.choose_action(zooms, sample_loc)
+                zooms = self.mnist.glimpseSensor(X,loc)
+                a_prob, loc = self.ram.choose_action(zooms, loc)
                 # During evaluation, instead of sampling from the normal distribution, the output is
                 # taken to be the input, i.e. the mean.
                 #sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
-                sample_loc = np.maximum(-1., np.minimum(1., loc))
+                #sample_loc = np.maximum(-1., np.minimum(1., loc))
             action = np.argmax(a_prob, axis=-1)
             actions += np.sum(np.equal(action,Y).astype(np.float32), axis=-1)
             actions_sqrt += np.sum((np.equal(action,Y).astype(np.float32))**2, axis=-1)
