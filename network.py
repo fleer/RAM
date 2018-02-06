@@ -60,12 +60,15 @@ class RAM():
         #   Glimpse Network
         #   ================
 
+        init_kernel = keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+        bias_initializer = keras.initializers.Zeros()
+
         # Build the glimpse input
         glimpse_model_i = keras.layers.Input(batch_shape=(self.batch_size, self.totalSensorBandwidth),
                                              name='glimpse_input')
         glimpse_model = keras.layers.Dense(128, activation='relu',
-                                           kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                           bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                           kernel_initializer=init_kernel,
+                                           bias_initializer=bias_initializer,
                                            name='glimpse_1'
                                            )(glimpse_model_i)
 
@@ -75,8 +78,8 @@ class RAM():
 
         location_model = keras.layers.Dense(128,
                                             activation = 'relu',
-                                            kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                            bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                            kernel_initializer=init_kernel,
+                                            bias_initializer=bias_initializer,
                                             name='location_1'
                                             )(location_model_i)
 
@@ -84,30 +87,30 @@ class RAM():
 
         glimpse_network_output_0  = keras.layers.Dense(256,
                                                       activation = 'relu',
-                                                      kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                                      bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
+                                                      kernel_initializer=init_kernel,
+                                                      bias_initializer=bias_initializer,
                                                       )(model_concat)
         glimpse_network_output  = keras.layers.Dense(256,
                                                      activation = 'linear',
-                                                     kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                                     bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
+                                                     kernel_initializer=init_kernel,
+                                                     bias_initializer=bias_initializer,
                                                      )(glimpse_network_output_0)
         #   ================
         #   Core Network
         #   ================
         rnn_input = keras.layers.Reshape((256,1))(glimpse_network_output)
-        model_output = keras.layers.recurrent.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',
+        model_output = keras.layers.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',
                                                 return_sequences=False, stateful=True, unroll=True,
-                                                kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                                bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                                kernel_initializer=init_kernel,
+                                                bias_initializer=bias_initializer,
                                                 name = 'rnn')(rnn_input)
         #   ================
         #   Action Network
         #   ================
         action_out = keras.layers.Dense(10,
                                  activation=self.log_softmax,
-                                 kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                 bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                 kernel_initializer=init_kernel,
+                                 bias_initializer=bias_initializer,
                                  name='action_output',
                                  )(model_output)
 
@@ -118,10 +121,8 @@ class RAM():
 
         location_out_0 = keras.layers.Dense(2,
                                  activation=self.hard_tanh,
-                                 #kernel_initializer=keras.initializers.glorot_uniform(),
-                                 kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                 bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                # bias_initializer=keras.initializers.glorot_uniform(),
+                                 kernel_initializer=init_kernel,
+                                 bias_initializer=bias_initializer,
                                  )(stop_grad)
         location_out = keras.layers.Lambda(lambda x: x*self.pixel_scaling, name='location_output')(location_out_0)
 
@@ -130,14 +131,16 @@ class RAM():
         #   ================
         baseline_output = keras.layers.Dense(1,
                                  activation='sigmoid',
-                               #  kernel_initializer=keras.initializers.glorot_uniform(),
-                                 kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                 bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                 kernel_initializer=init_kernel,
+                                 bias_initializer=bias_initializer,
                                  name='baseline_output',
                                          )(stop_grad)
 
         # Create the model
         self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out, baseline_output])
+
+        # Print Summary
+        self.ram.summary()
 
         #   ================
         #   Location Network at timestep 0
@@ -148,10 +151,8 @@ class RAM():
         hidden_state_in_0 = keras.layers.Input(shape=(256,))
         location_out_t = keras.layers.Dense(2,
                                              activation=self.hard_tanh,
-                                             #kernel_initializer=keras.initializers.glorot_uniform(),
-                                             kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                             bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                             # bias_initializer=keras.initializers.glorot_uniform(),
+                                             kernel_initializer=init_kernel,
+                                             bias_initializer=bias_initializer,
                                              name='location_output_t0',
                                              trainable=False
                                              )(hidden_state_in_0)
@@ -162,27 +163,19 @@ class RAM():
 
         # Compile the model
         if optimizer == "rmsprop":
-            self.ram.compile(optimizer=keras.optimizers.rmsprop(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.nnl_criterion(baseline=baseline_output),
-                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
-                                   'baseline_output': self.baseline_loss(action_p=action_out)})
+            opt = keras.optimizers.rmsprop(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm)
         elif optimizer == "adam":
-            self.ram.compile(optimizer=keras.optimizers.adam(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.nnl_criterion(baseline=baseline_output),
-                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
-                                   'baseline_output': self.baseline_loss(action_p=action_out)})
+            opt = keras.optimizers.adam(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm)
         elif optimizer == "adadelta":
-            self.ram.compile(optimizer=keras.optimizers.adadelta(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output':  self.nnl_criterion(baseline=baseline_output),
-                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
-                                   'baseline_output': self.baseline_loss(action_p=action_out)})
+            opt = keras.optimizers.adadelta(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm)
         elif optimizer == 'sgd':
-            self.ram.compile(optimizer=keras.optimizers.SGD(lr=lr, momentum=momentum, nesterov=False, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.nnl_criterion(baseline=baseline_output),
-                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
-                                   'baseline_output': self.baseline_loss(action_p=action_out)})
+            opt = keras.optimizers.SGD(lr=lr, momentum=momentum, nesterov=False, clipvalue=clipvalue, clipnorm=clipnorm)
         else:
             raise ValueError("Unrecognized update: {}".format(optimizer))
+        self.ram.compile(optimizer=opt,
+                         loss={'action_output': self.nnl_criterion(baseline=baseline_output),
+                               'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
+                               'baseline_output': self.baseline_loss(action_p=action_out)})
 
         # Print Summary
         self.ram.summary()
