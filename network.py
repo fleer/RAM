@@ -130,7 +130,7 @@ class RAM():
         #   Baseline Network
         #   ================
         baseline_output = keras.layers.Dense(1,
-                                 activation='sigmoid',
+                                 #activation='sigmoid',
                                  kernel_initializer=init_kernel,
                                  bias_initializer=bias_initializer,
                                  name='baseline_output',
@@ -268,12 +268,10 @@ class RAM():
 
             #TODO: Check how to deal with the 2 dims (x,y) of location
           #  R = K.tile(R_out, [1, 2])
-            b = K.stack([baseline, baseline], axis=-1 )
+            b = K.tile(baseline, [1, 2])
+            #b = K.stack([baseline, baseline], axis=-1 )
             loss_loc = ((sample_loc - y_pred)/(self.loc_std*self.loc_std)) * (R -b)
             return - loss_loc
-        #TODO: Test alternative--> Only train dense layer of location output
-        #self.ram.trainable = False
-        #self.ram.get_layer('location_mean').trainable = True
         return loss
 
     def baseline_loss(self, action_p):
@@ -298,10 +296,7 @@ class RAM():
             # Get Reward for current step
             R = K.equal(max_p_y, action) # reward per example
             R_out = K.cast(R, 'float32')
-            return K.mean(K.square(R_out - y_pred), axis=-1)
-        #TODO: Test alternative--> Only train dense layer of baseline output
-        #self.ram.trainable = False
-        #self.ram.get_layer('baseline_output').trainable = True
+            return K.mean(K.square(y_pred - R_out), axis=-1)
         return loss
 
 
@@ -335,9 +330,13 @@ class RAM():
 
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
 
-        loss = self.ram.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input},
+        loss = [0.,0.]
+        self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
                                        {'action_output': one_hot, 'location_output': loc_reward,
-                                        'baseline_output': np.reshape(Y, (self.batch_size,1))})
+                                        'baseline_output': np.reshape(Y, (self.batch_size,1))}, batch_size=self.batch_size, verbose=2)
+        #loss = self.ram.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input},
+        #                               {'action_output': one_hot, 'location_output': loc_reward,
+        #                                'baseline_output': np.reshape(Y, (self.batch_size,1))})
 
         return np.mean(loss)
 
