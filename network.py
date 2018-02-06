@@ -128,7 +128,6 @@ class RAM():
                                  activation=self.hard_tanh,
                                  kernel_initializer=init_kernel,
                                  bias_initializer=bias_initializer,
-                                 trainable=True,
                                  name='location_mean'
                                  )(stop_grad)
         location_out = keras.layers.Lambda(self.gaussian_pdf, name='location_output')(location_mean)
@@ -138,7 +137,7 @@ class RAM():
         #   Baseline Network
         #   ================
         baseline_output = keras.layers.Dense(1,
-                                 activation='sigmoid',
+                                 #activation='sigmoid',
                                  kernel_initializer=init_kernel,
                                  bias_initializer=bias_initializer,
                                  name='baseline_output',
@@ -171,31 +170,23 @@ class RAM():
 
         # Compile the model
         if optimizer == "rmsprop":
-            self.ram.compile(optimizer=keras.optimizers.rmsprop(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.nnl_criterion,
-                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean),
-                                   'baseline_output': self.baseline_loss(action_p=action_out)})
+            opt = keras.optimizers.rmsprop(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm)
         elif optimizer == "adam":
-            self.ram.compile(optimizer=keras.optimizers.adam(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.nnl_criterion,
-                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean),
-                                   'baseline_output': self.baseline_loss(action_p=action_out)})
+            opt = keras.optimizers.adam(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm)
         elif optimizer == "adadelta":
-            self.ram.compile(optimizer=keras.optimizers.adadelta(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.nnl_criterion,
-                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean),
-                                   'baseline_output': self.baseline_loss(action_p=action_out)})
+            opt = keras.optimizers.adadelta(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm)
         elif optimizer == 'sgd':
-            self.ram.compile(optimizer=keras.optimizers.SGD(lr=lr, momentum=momentum, nesterov=False, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.nnl_criterion,
-                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean),
-                                   'baseline_output': self.baseline_loss(action_p=action_out)})
+            opt = keras.optimizers.SGD(lr=lr, momentum=momentum, nesterov=False, clipvalue=clipvalue, clipnorm=clipnorm)
         else:
             raise ValueError("Unrecognized update: {}".format(optimizer))
+        self.ram.compile(optimizer=opt,
+                         loss={'action_output': self.nnl_criterion,
+                               'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean),
+                               'baseline_output': self.baseline_loss(action_p=action_out)})
 
 
     def gaussian_pdf(self, x):
-        g = keras.backend.switch(self.training, x, x + K.random_normal(shape=K.shape(x), mean=0., stddev=self.loc_std))
+        g = keras.backend.switch(self.training, x + K.random_normal(shape=K.shape(x), mean=0., stddev=self.loc_std), x)
         return self.hard_tanh(g) * self.pixel_scaling # normLoc coordinates are between -1 and 1
 
     def hard_tanh(self, x):
@@ -285,12 +276,9 @@ class RAM():
             #TODO: Check how to deal with the 2 dims (x,y) of location
           #  R = K.tile(R_out, [1, 2])
             b = K.tile(baseline, [1, 2])
-           # b = K.stack([baseline, baseline], axis=-1 )
+            #b = K.stack([baseline, baseline], axis=-1 )
             loss_loc = ((y_pred - mean)/(self.loc_std*self.loc_std)) * (R -b)
             return - loss_loc
-        #TODO: Test alternative--> Only train dense layer of location output
-        #self.ram.trainable = False
-        #self.ram.get_layer('location_mean').trainable = True
         return loss
 
     def baseline_loss(self, action_p):
@@ -309,16 +297,14 @@ class RAM():
             :return: Baseline Loss
             """
             # Compute Predicted and Correct action values
+            K.stop_gradient(action_p)
             max_p_y = K.argmax(action_p, axis=-1)
             action = K.cast(y_true, 'int64')
 
             # Get Reward for current step
             R = K.equal(max_p_y, action) # reward per example
             R_out = K.cast(R, 'float32')
-            return K.mean(K.square(R_out - y_pred), axis=-1)
-        #TODO: Test alternative--> Only train dense layer of baseline output
-        #self.ram.trainable = False
-        #self.ram.get_layer('baseline_output').trainable = True
+            return K.mean(K.square(y_pred - R_out), axis=-1)
         return loss
 
 

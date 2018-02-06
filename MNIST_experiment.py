@@ -90,6 +90,8 @@ class Experiment():
         """
         actions = 0.
         actions_sqrt = 0.
+        # During evaluation, instead of sampling from the normal distribution, the output is
+        # taken to be the input, i.e. the mean.
         self.ram.set_training(0)
         if validation:
             num_data = len(self.mnist.dataset.validation._images)
@@ -107,9 +109,6 @@ class Experiment():
             for n in range(self.nGlimpses):
                 zooms = self.mnist.glimpseSensor(X, loc)
                 a_prob, loc = self.ram.choose_action(zooms, loc)
-                # During evaluation, instead of sampling from the normal distribution, the output is
-                # taken to be the input, i.e. the mean.
-                #sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
             action = np.argmax(a_prob, axis=-1)
             actions += np.sum(np.equal(action,Y).astype(np.float32), axis=-1)
             actions_sqrt += np.sum((np.equal(action,Y).astype(np.float32))**2, axis=-1)
@@ -151,8 +150,8 @@ class Experiment():
             start_time = time.time()
             test_accuracy = 0
             test_accuracy_sqrt = 0
+            self.ram.set_training(1)
             while total_epochs == self.mnist.dataset.train.epochs_completed:
-                self.ram.set_training(1)
                 X, Y= self.mnist.get_batch_train(self.batch_size)
                 loc = self.ram.start_location()
                 for n in range(1, self.nGlimpses):
