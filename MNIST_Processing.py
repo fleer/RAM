@@ -1,4 +1,4 @@
-import tf_mnist_loader
+import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
@@ -19,7 +19,7 @@ class MNIST():
         self.sensorArea = self.sensorBandwidth**2
         self.depth = depth # zooms
         self.unit_pixels = unit_pixels
-        self.dataset = tf_mnist_loader.read_data_sets("mnist_data")
+        self.dataset = tf.contrib.learn.datasets.load_dataset("mnist")
 
         self.loc_std = loc_std # std when setting the location
 
