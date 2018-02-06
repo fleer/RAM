@@ -65,7 +65,7 @@ class RAM():
         #   Glimpse Network
         #   ================
 
-        init_kernel = keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+        init_kernel = keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
         bias_initializer = keras.initializers.Zeros()
 
         # Build the glimpse input
