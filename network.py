@@ -65,12 +65,15 @@ class RAM():
         #   Glimpse Network
         #   ================
 
+        init_kernel = keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+        bias_initializer = keras.initializers.Zeros()
+
         # Build the glimpse input
         glimpse_model_i = keras.layers.Input(batch_shape=(self.batch_size, self.totalSensorBandwidth),
                                              name='glimpse_input')
         glimpse_model = keras.layers.Dense(128, activation='relu',
-                                           kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                           bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                           kernel_initializer=init_kernel,
+                                           bias_initializer=bias_initializer,
                                            name='glimpse_1'
                                            )(glimpse_model_i)
 
@@ -80,8 +83,8 @@ class RAM():
 
         location_model = keras.layers.Dense(128,
                                             activation = 'relu',
-                                            kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                            bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                            kernel_initializer=init_kernel,
+                                            bias_initializer=bias_initializer,
                                             name='location_1'
                                             )(location_model_i)
 
@@ -89,13 +92,13 @@ class RAM():
 
         glimpse_network_output_0  = keras.layers.Dense(256,
                                                       activation = 'relu',
-                                                      kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                                      bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
+                                                      kernel_initializer=init_kernel,
+                                                      bias_initializer=bias_initializer,
                                                       )(model_concat)
         glimpse_network_output  = keras.layers.Dense(256,
                                                      activation = 'linear',
-                                                     kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                                     bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
+                                                     kernel_initializer=init_kernel,
+                                                     bias_initializer=bias_initializer,
                                                      )(glimpse_network_output_0)
         #   ================
         #   Core Network
@@ -103,16 +106,16 @@ class RAM():
         rnn_input = keras.layers.Reshape((256,1))(glimpse_network_output)
         model_output = keras.layers.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',
                                                 return_sequences=False, stateful=True, unroll=True,
-                                                kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                                bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                                kernel_initializer=init_kernel,
+                                                bias_initializer=bias_initializer,
                                                 name = 'rnn')(rnn_input)
         #   ================
         #   Action Network
         #   ================
         action_out = keras.layers.Dense(10,
                                  activation=self.log_softmax,
-                                 kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                 bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                 kernel_initializer=init_kernel,
+                                 bias_initializer=bias_initializer,
                                  name='action_output',
                                  )(model_output)
 
@@ -123,10 +126,8 @@ class RAM():
 
         location_mean = keras.layers.Dense(2,
                                  activation=self.hard_tanh,
-                                 #kernel_initializer=keras.initializers.glorot_uniform(),
-                                 kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                 bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                # bias_initializer=keras.initializers.glorot_uniform(),
+                                 kernel_initializer=init_kernel,
+                                 bias_initializer=bias_initializer,
                                  trainable=True,
                                  name='location_mean'
                                  )(stop_grad)
@@ -138,9 +139,8 @@ class RAM():
         #   ================
         baseline_output = keras.layers.Dense(1,
                                  activation='sigmoid',
-                               #  kernel_initializer=keras.initializers.glorot_uniform(),
-                                 kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                 bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                 kernel_initializer=init_kernel,
+                                 bias_initializer=bias_initializer,
                                  name='baseline_output',
                                          )(stop_grad)
 
@@ -159,10 +159,8 @@ class RAM():
         hidden_state_in_0 = keras.layers.Input(shape=(256,))
         location_out_t = keras.layers.Dense(2,
                                              activation=self.hard_tanh,
-                                             #kernel_initializer=keras.initializers.glorot_uniform(),
-                                             kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                             bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                             # bias_initializer=keras.initializers.glorot_uniform(),
+                                             kernel_initializer=init_kernel,
+                                             bias_initializer=bias_initializer,
                                              name='location_output_t0',
                                              trainable=False
                                              )(hidden_state_in_0)
