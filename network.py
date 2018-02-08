@@ -66,35 +66,36 @@ class RAM():
         # Build the glimpse input
         glimpse_model_i = keras.layers.Input(batch_shape=(self.batch_size, self.totalSensorBandwidth),
                                              name='glimpse_input')
-        glimpse_model = keras.layers.Dense(128, activation='relu',
+        glimpse_model_0 = keras.layers.Dense(128, activation='relu',
                                            kernel_initializer=init_kernel,
                                            bias_initializer=bias_initializer,
                                            name='glimpse_1'
                                            )(glimpse_model_i)
+        glimpse_model= keras.layers.Dense(256,
+                                           kernel_initializer=init_kernel,
+                                           bias_initializer=bias_initializer,
+                                           )(glimpse_model_0)
 
         # Build the location input
         location_model_i = keras.layers.Input(batch_shape=(self.batch_size, 2),
                                               name='location_input')
 
-        location_model = keras.layers.Dense(128,
+        location_model_0 = keras.layers.Dense(128,
                                             activation = 'relu',
                                             kernel_initializer=init_kernel,
                                             bias_initializer=bias_initializer,
                                             name='location_1'
                                             )(location_model_i)
 
-        model_concat = keras.layers.concatenate([location_model, glimpse_model])
 
-        glimpse_network_output_0  = keras.layers.Dense(256,
-                                                      activation = 'relu',
-                                                      kernel_initializer=init_kernel,
-                                                      bias_initializer=bias_initializer,
-                                                      )(model_concat)
-        glimpse_network_output  = keras.layers.Dense(256,
-                                                     activation = 'linear',
-                                                     kernel_initializer=init_kernel,
-                                                     bias_initializer=bias_initializer,
-                                                     )(glimpse_network_output_0)
+        location_model = keras.layers.Dense(256,
+                                             kernel_initializer=init_kernel,
+                                             bias_initializer=bias_initializer,
+                                             )(location_model_0)
+
+        model_merge = keras.layers.merge([location_model, glimpse_model], mode='sum')
+        glimpse_network_output = keras.layers.Lambda(lambda x: keras.activations.relu(x))(model_merge)
+
         #   ================
         #   Core Network
         #   ================
@@ -130,7 +131,7 @@ class RAM():
         #   Baseline Network
         #   ================
         baseline_output = keras.layers.Dense(1,
-                                 #activation='sigmoid',
+                                 activation='sigmoid',
                                  kernel_initializer=init_kernel,
                                  bias_initializer=bias_initializer,
                                  name='baseline_output',
@@ -217,7 +218,7 @@ class RAM():
         Log-Probability is achieved by using LogSoftMax activation
         """
         def loss(y_true, y_pred):
-            return - y_true * y_pred * (K.ones_like(baseline) - baseline)
+            return - y_true * y_pred #* (K.ones_like(baseline) - baseline)
         return loss
 
 
@@ -330,13 +331,9 @@ class RAM():
 
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
 
-        loss = [0.,0.]
-        self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
+        loss = self.ram.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input},
                                        {'action_output': one_hot, 'location_output': loc_reward,
-                                        'baseline_output': np.reshape(Y, (self.batch_size,1))}, batch_size=self.batch_size, verbose=2)
-        #loss = self.ram.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input},
-        #                               {'action_output': one_hot, 'location_output': loc_reward,
-        #                                'baseline_output': np.reshape(Y, (self.batch_size,1))})
+                                        'baseline_output': np.reshape(Y, (self.batch_size,1))})
 
         return np.mean(loss)
 
