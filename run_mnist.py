@@ -95,7 +95,7 @@ class PARAMETERS:
     LEARNING_RATE = 0.01
     # Number of steps the Learning rate should (linearly)
     # decay to MIN_LEARNING_RATE
-    LEARNING_RATE_DECAY = 800
+    LEARNING_RATE_DECAY = 200
     # Minimal Learning Rate
     MIN_LEARNING_RATE = 0.00001
     # Momentum

@@ -9,7 +9,7 @@ class MNIST():
     The Code for creating the glimpses is based on https://github.com/jlindsey15/RAM
     """
 
-    def __init__(self, mnist_size, batch_size, channels, scaling, sensorBandwidth, depth, loc_std, unit_pixels, translate, translated_mnist_size):
+    def __init__(self, mnist_size, batch_size, channels, scaling, sensorBandwidth, depth, unit_pixels, translate, translated_mnist_size):
 
         self.mnist_size = mnist_size
         self.batch_size = batch_size
@@ -20,8 +20,6 @@ class MNIST():
         self.depth = depth # zooms
         self.unit_pixels = unit_pixels
         self.dataset = tf_mnist_loader.read_data_sets("mnist_data")
-
-        self.loc_std = loc_std # std when setting the location
 
         self.translate = translate
         if translate:
@@ -52,7 +50,7 @@ class MNIST():
 
 
         # Convert location [-1,1] into MNIST Coordinates:
-        loc = np.around(((normLoc + 1) / 2.) * self.mnist_size)
+        loc = np.around(((normLoc + 1.) / 2.) * self.mnist_size)
         loc = loc.astype(np.int32)
 
         img = np.reshape(img, (self.batch_size, self.mnist_size, self.mnist_size, self.channels))

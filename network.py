@@ -63,7 +63,7 @@ class RAM():
         # Build the glimpse input
         glimpse_model_i = keras.layers.Input(batch_shape=(self.batch_size, self.totalSensorBandwidth),
                                              name='glimpse_input')
-        glimpse_model = keras.layers.Dense(128, activation='relu',
+        glimpse_model_0 = keras.layers.Dense(128, activation='relu',
                                            kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                            bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                            name='glimpse_1'
@@ -73,25 +73,26 @@ class RAM():
         location_model_i = keras.layers.Input(batch_shape=(self.batch_size, 2),
                                               name='location_input')
 
-        location_model = keras.layers.Dense(128,
+        location_model_0 = keras.layers.Dense(128,
                                             activation = 'relu',
                                             kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                             bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                             name='location_1'
                                             )(location_model_i)
 
-        model_concat = keras.layers.concatenate([location_model, glimpse_model])
+        location_model = keras.layers.Dense(256,
+                                              kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                              bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
+                                              )(location_model_0)
 
-        glimpse_network_output_0  = keras.layers.Dense(256,
-                                                      activation = 'relu',
-                                                      kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                                      bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
-                                                      )(model_concat)
-        glimpse_network_output  = keras.layers.Dense(256,
-                                                     activation = 'linear',
-                                                     kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
-                                                     bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
-                                                     )(glimpse_network_output_0)
+        glimpse_model = keras.layers.Dense(256,
+                                            kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
+                                            bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1)
+                                            )(glimpse_model_0)
+
+        glimpse_network_output_sum  = keras.layers.merge([glimpse_model,location_model])
+        glimpse_network_output  = keras.layers.Lambda(lambda x: keras.activations.relu(x))(glimpse_network_output_sum)
+
         #   ================
         #   Core Network
         #   ================
@@ -129,7 +130,7 @@ class RAM():
         #   Baseline Network
         #   ================
         baseline_output = keras.layers.Dense(1,
-                                 activation='sigmoid',
+                                # activation='sigmoid',
                                #  kernel_initializer=keras.initializers.glorot_uniform(),
                                  kernel_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
                                  bias_initializer=keras.initializers.RandomUniform(minval=-0.1, maxval=0.1),
@@ -274,13 +275,9 @@ class RAM():
             sample_loc = K.random_normal(y_pred.shape, y_pred, self.loc_std)
 
             #TODO: Check how to deal with the 2 dims (x,y) of location
-          #  R = K.tile(R_out, [1, 2])
             b = K.stack([baseline, baseline], axis=-1 )
             loss_loc = ((sample_loc - y_pred)/(self.loc_std*self.loc_std)) * (R -b)
             return - loss_loc
-        #TODO: Test alternative--> Only train dense layer of location output
-        #self.ram.trainable = False
-        #self.ram.get_layer('location_mean').trainable = True
         return loss
 
     def baseline_loss(self, action_p):
