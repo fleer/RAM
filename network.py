@@ -71,35 +71,37 @@ class RAM():
         # Build the glimpse input
         glimpse_model_i = keras.layers.Input(batch_shape=(self.batch_size, self.totalSensorBandwidth),
                                              name='glimpse_input')
-        glimpse_model = keras.layers.Dense(128, activation='relu',
+        glimpse_model_0 = keras.layers.Dense(128, activation='relu',
                                            kernel_initializer=init_kernel,
                                            bias_initializer=bias_initializer,
                                            name='glimpse_1'
                                            )(glimpse_model_i)
 
+        glimpse_model = keras.layers.Dense(256,
+                                             kernel_initializer=init_kernel,
+                                             bias_initializer=bias_initializer,
+                                             )(glimpse_model_0)
+
         # Build the location input
         location_model_i = keras.layers.Input(batch_shape=(self.batch_size, 2),
                                               name='location_input')
 
-        location_model = keras.layers.Dense(128,
+        location_model_0 = keras.layers.Dense(128,
                                             activation = 'relu',
                                             kernel_initializer=init_kernel,
                                             bias_initializer=bias_initializer,
                                             name='location_1'
                                             )(location_model_i)
 
-        model_concat = keras.layers.concatenate([location_model, glimpse_model])
 
-        glimpse_network_output_0  = keras.layers.Dense(256,
-                                                      activation = 'relu',
-                                                      kernel_initializer=init_kernel,
-                                                      bias_initializer=bias_initializer,
-                                                      )(model_concat)
-        glimpse_network_output  = keras.layers.Dense(256,
-                                                     activation = 'linear',
-                                                     kernel_initializer=init_kernel,
-                                                     bias_initializer=bias_initializer,
-                                                     )(glimpse_network_output_0)
+        location_model = keras.layers.Dense(256,
+                                             kernel_initializer=init_kernel,
+                                             bias_initializer=bias_initializer,
+                                             )(location_model_0)
+
+        model_merge = keras.layers.merge([location_model, glimpse_model], mode='sum')
+        glimpse_network_output = keras.layers.Lambda(lambda x: keras.activations.relu(x))(model_merge)
+
         #   ================
         #   Core Network
         #   ================
@@ -131,14 +133,15 @@ class RAM():
                                  trainable=True,
                                  name='location_mean'
                                  )(stop_grad)
-        location_out = keras.layers.Lambda(self.gaussian_pdf, name='location_output')(location_mean)
+        stop_grad_l = keras.layers.Lambda(lambda x: K.stop_gradient(x))(location_mean)
+        location_out = keras.layers.Lambda(self.gaussian_pdf, name='location_output')(stop_grad_l)
 
 
         #   ================
         #   Baseline Network
         #   ================
         baseline_output = keras.layers.Dense(1,
-                                 activation='sigmoid',
+                                 activation='linear',
                                  kernel_initializer=init_kernel,
                                  bias_initializer=bias_initializer,
                                  name='baseline_output',
@@ -171,28 +174,24 @@ class RAM():
 
         # Compile the model
         if optimizer == "rmsprop":
-            self.ram.compile(optimizer=keras.optimizers.rmsprop(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.nnl_criterion,
-                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean),
-                                   'baseline_output': self.baseline_loss(action_p=action_out)})
+            opt = keras.optimizers.rmsprop(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm)
         elif optimizer == "adam":
-            self.ram.compile(optimizer=keras.optimizers.adam(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.nnl_criterion,
-                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean),
-                                   'baseline_output': self.baseline_loss(action_p=action_out)})
+            opt = keras.optimizers.adam(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm)
         elif optimizer == "adadelta":
-            self.ram.compile(optimizer=keras.optimizers.adadelta(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.nnl_criterion,
-                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean),
-                                   'baseline_output': self.baseline_loss(action_p=action_out)})
+            opt = keras.optimizers.adadelta(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm)
         elif optimizer == 'sgd':
-            self.ram.compile(optimizer=keras.optimizers.SGD(lr=lr, momentum=momentum, nesterov=False, clipvalue=clipvalue, clipnorm=clipnorm),
-                             loss={'action_output': self.nnl_criterion,
-                                   'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean),
-                                   'baseline_output': self.baseline_loss(action_p=action_out)})
+            opt = keras.optimizers.SGD(lr=lr, momentum=momentum, nesterov=True, clipvalue=clipvalue, clipnorm=clipnorm)
         else:
             raise ValueError("Unrecognized update: {}".format(optimizer))
-
+        self.ram.compile(optimizer=opt,
+                         loss={'action_output': self.total_loss(baseline=baseline_output, mean=location_mean, location= location_out),
+                               #'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean, sample_loc = location_out),
+                                'baseline_output': self.baseline_loss(action_p=action_out)})
+                       #  loss={'action_output': self.nnl_criterion,
+                       #        'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean, sample_loc = location_out),
+                       #        'baseline_output': self.baseline_loss(action_p=action_out)})
+        # Print Summary
+        self.ram.summary()
 
     def gaussian_pdf(self, x):
         g = keras.backend.switch(self.training, x, x + K.random_normal(shape=K.shape(x), mean=0., stddev=self.loc_std))
@@ -224,22 +223,7 @@ class RAM():
         #TODO: Check own log_softmax implementation
         #return x - K.log(K.sum(K.exp(x), axis=axis, keepdims=True))
 
-
-    def nnl_criterion(self, y_true, y_pred):
-        """
-        Negative log likelihood (NNL) criterion
-        :param y_true: True Value
-        :param y_pred: Log-Probability Network Prediction
-        :return: Loss
-
-        Log-Probability is achieved by using LogSoftMax activation
-        """
-        #self.ram.trainable = True
-        #self.ram.get_layer('location_mean').trainable = False
-        #TODO: Implement baseline!
-        return - y_true * y_pred
-
-    def reinforce_loss(self, action_p, baseline, mean):
+    def reinforce_loss(self, baseline, mean):
         """
         :param action_p: Network output of action network
         :param baseline: Network putput of baseline network
@@ -263,16 +247,16 @@ class RAM():
                      distribution
             """
             # Compute Predicted and Correct action values
-            max_p_y = K.argmax(action_p, axis=-1)
+            max_p_y = K.argmax(y_true, axis=-1)
             max_p_y = K.stack([max_p_y, max_p_y], axis=-1)
             #action = K.argmax(y_true, axis=-1)
-            action = K.cast(y_true, 'int64')
+            action = K.cast(y_pred, 'int64')
 
 
             # Get Reward for current step
             R = K.equal(max_p_y, action) # reward per example
             R = K.cast(R, 'float32')
-          #  R_out = K.reshape(R, (self.batch_size,1))
+            #  R_out = K.reshape(R, (self.batch_size,1))
 
             #Uses the REINFORCE algorithm in sec 6. p.237-239)
             # Individual loss for location network
@@ -283,11 +267,85 @@ class RAM():
             #       d m          s**2
 
             #TODO: Check how to deal with the 2 dims (x,y) of location
-          #  R = K.tile(R_out, [1, 2])
+            #  R = K.tile(R_out, [1, 2])
             b = K.tile(baseline, [1, 2])
-           # b = K.stack([baseline, baseline], axis=-1 )
+            # b = K.stack([baseline, baseline], axis=-1 )
             loss_loc = ((y_pred - mean)/(self.loc_std*self.loc_std)) * (R -b)
             return - loss_loc
+        #TODO: Test alternative--> Only train dense layer of location output
+        #self.ram.trainable = False
+        #self.ram.get_layer('location_mean').trainable = True
+        return loss
+
+    def nnl_criterion(self, y_true, y_pred):
+        """
+        Negative log likelihood (NNL) criterion
+        :param y_true: True Value
+        :param y_pred: Log-Probability Network Prediction
+        :return: Loss
+
+        Log-Probability is achieved by using LogSoftMax activation
+        """
+        #self.ram.trainable = True
+        #self.ram.get_layer('location_mean').trainable = False
+        #TODO: Implement baseline!
+        return - y_true * y_pred
+
+    def total_loss(self, baseline, mean, location):
+        """
+        :param action_p: Network output of action network
+        :param baseline: Network putput of baseline network
+        :return: Loss, based on REINFORCE algorithm for the normal
+                distribution
+        """
+        def loss(y_true, y_pred):
+            """
+            REINFORCE algorithm for Normal Distribution
+            Used for location network loss
+            -------
+            Williams, Ronald J. "Simple statistical gradient-following
+            algorithms for connectionist reinforcement learning."
+            Machine learning 8.3-4 (1992): 229-256.
+            -------
+
+            Here, some tricks are used to get the desired result...
+            :param y_true:  One-Hot Encoding of correct Action
+            :param y_pred: Output of Location Network --> Mean of the Normal distribution
+            :return: Loss, based on REINFORCE algorithm for the normal
+                     distribution
+            """
+            # Compute Predicted and Correct action values
+         #   max_p_y = K.argmax(y_true, axis=-1)
+         #   max_p_y = K.stack([max_p_y, max_p_y], axis=-1)
+            #action = K.argmax(y_true, axis=-1)
+         #   action = K.cast(K.stack([y_pred, y_pred]), 'int64')
+            va = y_true * y_pred
+            R = K.argmax(va, axis=-1)
+
+
+            # Get Reward for current step
+         #   R = K.equal(max_p_y, action) # reward per example
+            R_out = K.cast(R, 'float32')
+           # R_out = K.reshape(R, (self.batch_size,1))
+
+            #Uses the REINFORCE algorithm in sec 6. p.237-239)
+            # Individual loss for location network
+            # Compute loss via REINFORCE algorithm
+            # for gaussian distribution
+            # d ln(f(m,s,x))   (x - m)
+            # -------------- = -------- with m = mean, x = sample, s = standard_deviation
+            #       d m          s**2
+
+            #TODO: Check how to deal with the 2 dims (x,y) of location
+           # R = K.tile(R_out, [1, 2])
+            R = K.stack([R_out, R_out], axis=-1 )
+            b = K.tile(baseline, [1, 2])
+           # b = K.stack([baseline, baseline], axis=-1 )
+            loss_loc = ((location - mean)/(self.loc_std*self.loc_std)) * (R -b)
+            cost = K.concatenate([y_true*y_pred, loss_loc], axis=-1)
+            cost = K.sum(cost, axis=1)
+            cost = K.mean(cost, axis=0)
+            return - cost
         #TODO: Test alternative--> Only train dense layer of location output
         #self.ram.trainable = False
         #self.ram.get_layer('location_mean').trainable = True
