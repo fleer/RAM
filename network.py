@@ -184,7 +184,7 @@ class RAM():
         else:
             raise ValueError("Unrecognized update: {}".format(optimizer))
         self.ram.compile(optimizer=opt,
-                         loss={'action_output': self.total_loss(baseline=baseline_output, mean=location_mean, location= location_out),
+                         loss={'action_output': self.total_loss(baseline=baseline_output, mean=location_mean),
                                #'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean, sample_loc = location_out),
                                 'baseline_output': self.baseline_loss(action_p=action_out)})
                        #  loss={'action_output': self.nnl_criterion,
@@ -291,7 +291,7 @@ class RAM():
         #TODO: Implement baseline!
         return - y_true * y_pred
 
-    def total_loss(self, baseline, mean, location):
+    def total_loss(self, baseline, mean):
         """
         :param action_p: Network output of action network
         :param baseline: Network putput of baseline network
@@ -335,6 +335,8 @@ class RAM():
             # d ln(f(m,s,x))   (x - m)
             # -------------- = -------- with m = mean, x = sample, s = standard_deviation
             #       d m          s**2
+            g = mean + K.random_normal(shape=K.shape(mean), mean=0., stddev=self.loc_std)
+            location = self.hard_tanh(g) * self.pixel_scaling # normLoc coordinates are between -1 and 1
 
             #TODO: Check how to deal with the 2 dims (x,y) of location
            # R = K.tile(R_out, [1, 2])
@@ -343,7 +345,7 @@ class RAM():
            # b = K.stack([baseline, baseline], axis=-1 )
             loss_loc = ((location - mean)/(self.loc_std*self.loc_std)) * (R -b)
             cost = K.concatenate([y_true*y_pred, loss_loc], axis=-1)
-            cost = K.sum(cost, axis=1)
+            cost = K.sum(cost, axis=-1)
             cost = K.mean(cost, axis=0)
             return - cost
         #TODO: Test alternative--> Only train dense layer of location output
