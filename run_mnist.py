@@ -66,7 +66,7 @@ class PARAMETERS:
     #   Number of learning epochs
     MAX_EPOCHS= 2000
     #   Batch size
-    BATCH_SIZE = 20
+    BATCH_SIZE = 32
     #   Early stopping
     EARLY_STOPPING = True
     #   Number of Epochs observing the worsening of

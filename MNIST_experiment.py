@@ -51,11 +51,11 @@ class Experiment():
         #   ================
 
         if DOMAIN_OPTIONS.TRANSLATE:
-            pixel_scaling = (DOMAIN_OPTIONS.UNIT_PIXELS * 2.)/ float(DOMAIN_OPTIONS.TRANSLATED_MNIST_SIZE)
+            self.pixel_scaling = (DOMAIN_OPTIONS.UNIT_PIXELS * 2.)/ float(DOMAIN_OPTIONS.TRANSLATED_MNIST_SIZE)
         else:
-            pixel_scaling = (DOMAIN_OPTIONS.UNIT_PIXELS * 2.)/ float(DOMAIN_OPTIONS.MNIST_SIZE)
+            self.pixel_scaling = (DOMAIN_OPTIONS.UNIT_PIXELS * 2.)/ float(DOMAIN_OPTIONS.MNIST_SIZE)
 
-        self.ram = RAM(totalSensorBandwidth, self.batch_size, self.nGlimpses, pixel_scaling,
+        self.ram = RAM(totalSensorBandwidth, self.batch_size, self.nGlimpses, self.pixel_scaling,
                        PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY,
                        PARAMETERS.MIN_LEARNING_RATE, 2*DOMAIN_OPTIONS.LOC_STD)
 
@@ -103,11 +103,12 @@ class Experiment():
                 X, Y= self.mnist.get_batch_validation(self.batch_size)
             else:
                 X, Y= self.mnist.get_batch_test(self.batch_size)
-            loc = self.ram.start_location()
+            loc = self.ram.start_location() * self.pixel_scaling
            # sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
             for n in range(self.nGlimpses):
                 zooms = self.mnist.glimpseSensor(X,loc)
                 a_prob, loc = self.ram.choose_action(zooms, loc)
+                loc = loc * self.pixel_scaling
                 # During evaluation, instead of sampling from the normal distribution, the output is
                 # taken to be the input, i.e. the mean.
                 #sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
@@ -156,12 +157,12 @@ class Experiment():
             while total_epochs == self.mnist.dataset.train.epochs_completed:
                 X, Y= self.mnist.get_batch_train(self.batch_size)
                 loc = self.ram.start_location()
-                sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
+                sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape))) * self.pixel_scaling
                 for n in range(1, self.nGlimpses):
                     zooms = self.mnist.glimpseSensor(X, sample_loc)
                     a_prob, loc = self.ram.choose_action(zooms, sample_loc)
                     # During training, the output is sampled from a normal distribution with fixed standard deviation.
-                    sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
+                    sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))*self.pixel_scaling
                 zooms = self.mnist.glimpseSensor(X, sample_loc)
                 loss = self.ram.train(zooms, sample_loc, Y)
                 action = np.argmax(a_prob, axis=-1)

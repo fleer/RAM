@@ -99,7 +99,8 @@ class RAM():
         #   Core Network
         #   ================
         rnn_input = keras.layers.Reshape((256,1))(glimpse_network_output)
-        model_output = keras.layers.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',
+      #  model_output = keras.layers.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',
+        model_output = keras.layers.LSTM(256, recurrent_initializer="zeros", activation='relu',
                                                 return_sequences=False, stateful=True, unroll=True,
                                                 kernel_initializer=init_kernel,
                                                 bias_initializer=bias_initializer,
@@ -119,18 +120,18 @@ class RAM():
         #   Location Network
         #   ================
 
-        location_out_0 = keras.layers.Dense(2,
+        location_out = keras.layers.Dense(2,
                                  activation=self.hard_tanh,
                                  kernel_initializer=init_kernel,
                                  bias_initializer=bias_initializer,
+                                 name='location_output'
                                  )(stop_grad)
-        location_out = keras.layers.Lambda(lambda x: x*self.pixel_scaling, name='location_output')(location_out_0)
 
         #   ================
         #   Baseline Network
         #   ================
         baseline_output = keras.layers.Dense(1,
-                                 #activation='sigmoid',
+                                 activation='linear',
                                  kernel_initializer=init_kernel,
                                  bias_initializer=bias_initializer,
                                  name='baseline_output',
@@ -149,14 +150,13 @@ class RAM():
         #TODO: Find a better solution
 
         hidden_state_in_0 = keras.layers.Input(shape=(256,))
-        location_out_t = keras.layers.Dense(2,
+        location_out_t0 = keras.layers.Dense(2,
                                              activation=self.hard_tanh,
                                              kernel_initializer=init_kernel,
                                              bias_initializer=bias_initializer,
                                              name='location_output_t0',
                                              trainable=False
                                              )(hidden_state_in_0)
-        location_out_t0 = keras.layers.Lambda(lambda x: x*self.pixel_scaling)(location_out_t)
 
         # Create Location model at timestep 0
         self.loc_t0 = keras.models.Model(inputs=hidden_state_in_0, outputs=location_out_t0)
@@ -173,10 +173,12 @@ class RAM():
         else:
             raise ValueError("Unrecognized update: {}".format(optimizer))
         self.ram.compile(optimizer=opt,
-                         loss={'action_output': self.nnl_criterion(baseline=baseline_output),
-                               'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output),
-                               'baseline_output': self.baseline_loss(action_p=action_out)})
-
+                         loss={'action_output': self.total_loss(baseline=baseline_output, mean=location_out),
+                               #'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean, sample_loc = location_out),
+                                'baseline_output': self.baseline_loss(action_p=action_out)})
+                       #  loss={'action_output': self.nnl_criterion,
+                       #        'location_output': self.reinforce_loss(action_p=action_out, baseline=baseline_output, mean=location_mean, sample_loc = location_out),
+                       #        'baseline_output': self.baseline_loss(action_p=action_out)})
         # Print Summary
         self.ram.summary()
 
@@ -206,28 +208,14 @@ class RAM():
         #TODO: Check own log_softmax implementation
         #return x - K.log(K.sum(K.exp(x), axis=axis, keepdims=True))
 
-
-    def nnl_criterion(self, baseline):
-        """
-        Negative log likelihood (NNL) criterion
-        :param y_true: True Value
-        :param y_pred: Log-Probability Network Prediction
-        :return: Loss
-
-        Log-Probability is achieved by using LogSoftMax activation
-        """
-        def loss(y_true, y_pred):
-            return - y_true * y_pred * (K.ones_like(baseline) - baseline)
-        return loss
-
-
-    def reinforce_loss(self, action_p, baseline):
+    def total_loss(self, baseline, mean):
         """
         :param action_p: Network output of action network
         :param baseline: Network putput of baseline network
         :return: Loss, based on REINFORCE algorithm for the normal
                 distribution
         """
+        baseline = K.stop_gradient(baseline)
         def loss(y_true, y_pred):
             """
             REINFORCE algorithm for Normal Distribution
@@ -245,15 +233,17 @@ class RAM():
                      distribution
             """
             # Compute Predicted and Correct action values
-            max_p_y = K.argmax(action_p, axis=-1)
-            max_p_y = K.stack([max_p_y, max_p_y], axis=-1)
+         #   max_p_y = K.argmax(y_true, axis=-1)
+         #   max_p_y = K.stack([max_p_y, max_p_y], axis=-1)
             #action = K.argmax(y_true, axis=-1)
-            action = K.cast(y_true, 'int64')
+         #   action = K.cast(K.stack([y_pred, y_pred]), 'int64')
+            va = y_true * y_pred
+            R = K.argmax(va, axis=-1)
 
             # Get Reward for current step
-            R = K.equal(max_p_y, action) # reward per example
-            R = K.cast(R, 'float32')
-          #  R_out = K.reshape(R, (self.batch_size,1))
+         #   R = K.equal(max_p_y, action) # reward per example
+            R_out = K.cast(R, 'float32')
+           # R_out = K.reshape(R, (self.batch_size,1))
 
             #Uses the REINFORCE algorithm in sec 6. p.237-239)
             # Individual loss for location network
@@ -262,16 +252,22 @@ class RAM():
             # d ln(f(m,s,x))   (x - m)
             # -------------- = -------- with m = mean, x = sample, s = standard_deviation
             #       d m          s**2
-
-            #Sample Location, based on current mean
-            sample_loc = K.random_normal(y_pred.shape, y_pred, self.loc_std)
+            g = mean + K.random_normal(shape=K.shape(mean), mean=0., stddev=self.loc_std)
+            location = self.hard_tanh(g) * self.pixel_scaling # normLoc coordinates are between -1 and 1
 
             #TODO: Check how to deal with the 2 dims (x,y) of location
-          #  R = K.tile(R_out, [1, 2])
+           # R = K.tile(R_out, [1, 2])
+            R = K.stack([R_out, R_out], axis=-1 )
             b = K.tile(baseline, [1, 2])
-            #b = K.stack([baseline, baseline], axis=-1 )
-            loss_loc = ((sample_loc - y_pred)/(self.loc_std*self.loc_std)) * (R -b)
-            return - loss_loc
+           # b = K.stack([baseline, baseline], axis=-1 )
+            loss_loc = ((location - mean)/(self.loc_std*self.loc_std)) * (R -b)
+            cost = K.concatenate([y_true*y_pred, loss_loc], axis=-1)
+            cost = K.sum(cost, axis=1)
+            cost = K.mean(cost, axis=0)
+            return - cost
+        #TODO: Test alternative--> Only train dense layer of location output
+        #self.ram.trainable = False
+        #self.ram.get_layer('location_mean').trainable = True
         return loss
 
     def baseline_loss(self, action_p):
@@ -324,19 +320,15 @@ class RAM():
 
         # A little bit hacky, but we need the reward in the loss function
         # instead of the location
-        loc_reward = np.stack([Y,Y],axis=-1)
+        #loc_reward = np.stack([Y,Y],axis=-1)
 
         one_hot = keras.utils.to_categorical(Y, 10)
 
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
 
-        loss = [0.,0.]
-        self.ram.fit({'glimpse_input': glimpse_input, 'location_input': loc_input},
-                                       {'action_output': one_hot, 'location_output': loc_reward,
-                                        'baseline_output': np.reshape(Y, (self.batch_size,1))}, batch_size=self.batch_size, verbose=2)
-        #loss = self.ram.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input},
-        #                               {'action_output': one_hot, 'location_output': loc_reward,
-        #                                'baseline_output': np.reshape(Y, (self.batch_size,1))})
+        loss = self.ram.train_on_batch({'glimpse_input': glimpse_input, 'location_input': loc_input},
+                                       {'action_output': one_hot, #'location_output': loc_reward,
+                                        'baseline_output': np.reshape(Y, (self.batch_size,1))})
 
         return np.mean(loss)
 
