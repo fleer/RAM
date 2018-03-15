@@ -100,7 +100,7 @@ class RAM():
         #   ================
         rnn_input = keras.layers.Reshape((256,1))(glimpse_network_output)
       #  model_output = keras.layers.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',
-        model_output = keras.layers.LSTM(256, recurrent_initializer="zeros", activation='relu',
+        model_output = keras.layers.GRU(256, recurrent_initializer="zeros", activation='relu',
                                                 return_sequences=False, stateful=True, unroll=True,
                                                 kernel_initializer=init_kernel,
                                                 bias_initializer=bias_initializer,
@@ -115,7 +115,7 @@ class RAM():
                                  name='action_output',
                                  )(model_output)
 
-        stop_grad = keras.layers.Lambda(lambda x: K.stop_gradient(x))(model_output)
+     #   stop_grad = keras.layers.Lambda(lambda x: K.stop_gradient(x))(model_output)
         #   ================
         #   Location Network
         #   ================
@@ -125,7 +125,7 @@ class RAM():
                                  kernel_initializer=init_kernel,
                                  bias_initializer=bias_initializer,
                                  name='location_output'
-                                 )(stop_grad)
+                                 )(model_output)
 
         #   ================
         #   Baseline Network
@@ -135,7 +135,7 @@ class RAM():
                                  kernel_initializer=init_kernel,
                                  bias_initializer=bias_initializer,
                                  name='baseline_output',
-                                         )(stop_grad)
+                                         )(model_output)
 
         # Create the model
         self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out, baseline_output])
@@ -215,6 +215,8 @@ class RAM():
         :return: Loss, based on REINFORCE algorithm for the normal
                 distribution
         """
+        self.ram.trainable = True
+        mean = K.stop_gradient(mean)
         baseline = K.stop_gradient(baseline)
         def loss(y_true, y_pred):
             """
@@ -275,6 +277,8 @@ class RAM():
         :param action_p: Network output of action network
         :return: Baseline Loss
         """
+        self.ram.trainable = False
+        self.ram.get_layer('baseline_output').trainable = True
         def loss(y_true, y_pred):
             """
             The baseline is trained with mean-squared-error
