@@ -57,7 +57,7 @@ class Experiment():
 
         self.ram = RAM(totalSensorBandwidth, self.batch_size, self.nGlimpses, self.pixel_scaling,
                        PARAMETERS.LEARNING_RATE, PARAMETERS.LEARNING_RATE_DECAY,
-                       PARAMETERS.MIN_LEARNING_RATE, 2*DOMAIN_OPTIONS.LOC_STD)
+                       PARAMETERS.MIN_LEARNING_RATE, DOMAIN_OPTIONS.LOC_STD)
 
         self.ram.big_net(PARAMETERS.OPTIMIZER,PARAMETERS.LEARNING_RATE,PARAMETERS.MOMENTUM,
                          PARAMETERS.CLIPNORM, PARAMETERS.CLIPVALUE)
@@ -141,9 +141,9 @@ class Experiment():
         """
         total_epochs = 0
         # Initial Performance Check
-        #accuracy, accuracy_std = self.performance_run(total_epochs)
-        #logging.info("Epoch={:d}: >>> Test-Accuracy: {:.4f} "
-        #              "+/- {:.6f}".format(total_epochs, accuracy, accuracy_std))
+        accuracy, accuracy_std = self.performance_run(total_epochs)
+        logging.info("Epoch={:d}: >>> Test-Accuracy: {:.4f} "
+                      "+/- {:.6f}".format(total_epochs, accuracy, accuracy_std))
         num_train_data = len(self.mnist.dataset.train._images)
 
         patience_steps = 0
@@ -174,9 +174,6 @@ class Experiment():
                 lr = self.ram.learning_rate_decay()
 
             # Check Performance
-           # if total_steps % (self.max_epochs / self.num_policy_checks) == 0:
-
-
             if total_epochs % 10 == 0:
                 # Test Accuracy
                 accuracy, accuracy_std = self.performance_run(total_epochs)
