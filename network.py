@@ -99,8 +99,8 @@ class RAM():
         #   Core Network
         #   ================
         rnn_input = keras.layers.Reshape((256,1))(glimpse_network_output)
-       # model_output = keras.layers.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',
-        model_output = keras.layers.LSTM(256, recurrent_initializer="zeros", activation='relu',
+        model_output = keras.layers.SimpleRNN(256,recurrent_initializer="zeros", activation='relu',
+       # model_output = keras.layers.LSTM(256, recurrent_initializer="zeros", activation='relu',
                                                 return_sequences=False, stateful=True, unroll=True,
                                                 kernel_initializer=init_kernel,
                                                 bias_initializer=bias_initializer,
@@ -115,7 +115,7 @@ class RAM():
                                  name='action_output',
                                  )(model_output)
 
-        stop_grad = keras.layers.Lambda(lambda x: K.stop_gradient(x))(model_output)
+      #  stop_grad = keras.layers.Lambda(lambda x: K.stop_gradient(x))(model_output)
         #   ================
         #   Location Network
         #   ================
@@ -125,7 +125,7 @@ class RAM():
                                  kernel_initializer=init_kernel,
                                  bias_initializer=bias_initializer,
                                  name='location_output'
-                                 )(stop_grad)
+                                 )(model_output)
 
         #   ================
         #   Baseline Network
@@ -135,7 +135,7 @@ class RAM():
                                  kernel_initializer=init_kernel,
                                  bias_initializer=bias_initializer,
                                  name='baseline_output',
-                                         )(stop_grad)
+                                         )(model_output)
 
         # Create the model
         self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out, baseline_output])
@@ -213,8 +213,9 @@ class RAM():
         :return: Loss, based on REINFORCE algorithm for the normal
                 distribution
         """
-     #   self.ram.trainable = True
-     #   self.ram.get_layer('baseline_output').trainable = False
+#        self.ram.trainable = True
+#        self.ram.get_layer('location_output').trainable = True
+        action_p = K.stop_gradient(action_p)
         baseline = K.stop_gradient(baseline)
         def loss(y_true, y_pred):
             """
@@ -244,7 +245,8 @@ class RAM():
             R = K.equal(max_p_y, action) # reward per example
             R = K.cast(R, 'float32')
             #R_out = K.reshape(R, (self.batch_size,1))
-            one_hot = K.one_hot(action[:,0], self.output_dim)
+            policy = action_p * K.one_hot(action[:,0], self.output_dim)
+
             #Uses the REINFORCE algorithm in sec 6. p.237-239)
             # Individual loss for location network
             # Compute loss via REINFORCE algorithm
@@ -261,7 +263,8 @@ class RAM():
             b = K.tile(baseline, [1, 2])
             # b = K.stack([baseline, baseline], axis=-1 )
             loss_loc = ((location - y_pred)/(self.loc_std*self.loc_std)) * (R -b)
-            cost = K.concatenate([action_p*one_hot, loss_loc], axis=1)
+            cost = K.concatenate([policy, loss_loc], axis=1)
+
             cost = K.sum(cost, axis=1)
             cost = K.mean(cost, axis=0)
             return - cost
@@ -277,11 +280,9 @@ class RAM():
         :return: Loss, based on REINFORCE algorithm for the normal
                 distribution
         """
-       # self.ram.trainable = True
-       # self.ram.get_layer('baseline_output').trainable = False
-     #   mean = K.stop_gradient(mean)
-     #   baseline = K.stop_gradient(baseline)
+ #       self.ram.trainable = True
         baseline = K.stop_gradient(baseline)
+        mean = K.stop_gradient(mean)
         def loss(y_true, y_pred):
             """
             REINFORCE algorithm for Normal Distribution
@@ -299,15 +300,11 @@ class RAM():
                      distribution
             """
             # Compute Predicted and Correct action values
-         #   max_p_y = K.argmax(y_true, axis=-1)
-         #   max_p_y = K.stack([max_p_y, max_p_y], axis=-1)
-            #action = K.argmax(y_true, axis=-1)
-         #   action = K.cast(K.stack([y_pred, y_pred]), 'int64')
-            va = y_true * y_pred
-            R = K.argmax(va, axis=-1)
+            max_p_y = K.argmax(y_pred, axis=-1)
+            action = K.argmax(y_true, axis=-1)
 
             # Get Reward for current step
-         #   R = K.equal(max_p_y, action) # reward per example
+            R = K.equal(max_p_y, action) # reward per example
             R_out = K.cast(R, 'float32')
            # R_out = K.reshape(R, (self.batch_size,1))
 
@@ -327,7 +324,7 @@ class RAM():
             b = K.tile(baseline, [1, 2])
            # b = K.stack([baseline, baseline], axis=-1 )
             loss_loc = ((location - mean)/(self.loc_std*self.loc_std)) * (R -b)
-            cost = K.concatenate([y_true*y_pred, loss_loc], axis=1)
+            cost = K.concatenate([y_pred * y_true, loss_loc], axis=1)
             cost = K.sum(cost, axis=1)
             cost = K.mean(cost, axis=0)
             return - cost
@@ -341,8 +338,8 @@ class RAM():
         :param action_p: Network output of action network
         :return: Baseline Loss
         """
-     #   self.ram.trainable = False
-     #   self.ram.get_layer('baseline_output').trainable = True
+       # self.ram.trainable = False
+       #  self.ram.get_layer('baseline_output').trainable = True
         def loss(y_true, y_pred):
             """
             The baseline is trained with mean-squared-error
@@ -391,7 +388,6 @@ class RAM():
         loc_reward = np.stack([Y,Y],axis=-1)
 
         one_hot = keras.utils.to_categorical(Y, 10)
-
         glimpse_input = np.reshape(zooms, (self.batch_size, self.totalSensorBandwidth))
 
      #   w = self.ram.get_layer("location_output").get_weights()
