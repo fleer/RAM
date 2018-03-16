@@ -115,7 +115,7 @@ class RAM():
                                  name='action_output',
                                  )(model_output)
 
-      #  stop_grad = keras.layers.Lambda(lambda x: K.stop_gradient(x))(model_output)
+        stop_grad = keras.layers.Lambda(lambda x: K.stop_gradient(x))(model_output)
         #   ================
         #   Location Network
         #   ================
@@ -125,7 +125,7 @@ class RAM():
                                  kernel_initializer=init_kernel,
                                  bias_initializer=bias_initializer,
                                  name='location_output'
-                                 )(model_output)
+                                 )(stop_grad)
 
         #   ================
         #   Baseline Network
@@ -135,7 +135,7 @@ class RAM():
                                  kernel_initializer=init_kernel,
                                  bias_initializer=bias_initializer,
                                  name='baseline_output',
-                                         )(model_output)
+                                         )(stop_grad)
 
         # Create the model
         self.ram = keras.models.Model(inputs=[glimpse_model_i, location_model_i], outputs=[action_out, location_out, baseline_output])
@@ -169,7 +169,7 @@ class RAM():
         elif optimizer == "adadelta":
             opt = keras.optimizers.adadelta(lr=lr, clipvalue=clipvalue, clipnorm=clipnorm)
         elif optimizer == 'sgd':
-            opt = keras.optimizers.SGD(lr=lr, momentum=momentum, nesterov=False, clipvalue=clipvalue, clipnorm=clipnorm)
+            opt = keras.optimizers.SGD(lr=lr, momentum=momentum, nesterov=True, clipvalue=clipvalue, clipnorm=clipnorm)
         else:
             raise ValueError("Unrecognized update: {}".format(optimizer))
         self.ram.compile(optimizer=opt,

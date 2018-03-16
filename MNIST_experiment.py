@@ -103,15 +103,15 @@ class Experiment():
                 X, Y= self.mnist.get_batch_validation(self.batch_size)
             else:
                 X, Y= self.mnist.get_batch_test(self.batch_size)
-            loc = self.ram.start_location() * self.pixel_scaling
-           # sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
+            mean_loc = self.ram.start_location()
+            loc = np.maximum(-1., np.minimum(1., np.random.normal(mean_loc, self.loc_std, mean_loc.shape)))* self.pixel_scaling
             for n in range(self.nGlimpses):
                 zooms = self.mnist.glimpseSensor(X,loc)
-                a_prob, loc = self.ram.choose_action(zooms, loc)
-                loc = loc * self.pixel_scaling
+                a_prob, mean_loc = self.ram.choose_action(zooms, loc)
+                #loc = mean_loc * self.pixel_scaling
                 # During evaluation, instead of sampling from the normal distribution, the output is
                 # taken to be the input, i.e. the mean.
-                #sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))
+                loc = np.maximum(-1., np.minimum(1., np.random.normal(mean_loc, self.loc_std, mean_loc.shape)))* self.pixel_scaling
                 #sample_loc = np.maximum(-1., np.minimum(1., loc))
             action = np.argmax(a_prob, axis=-1)
             actions += np.sum(np.equal(action,Y).astype(np.float32), axis=-1)
@@ -151,6 +151,7 @@ class Experiment():
         best_weights = None
 
         for i in range(self.max_epochs):
+            mean_loss = []
             start_time = time.time()
             test_accuracy = 0
             test_accuracy_sqrt = 0
@@ -165,6 +166,7 @@ class Experiment():
                     sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))*self.pixel_scaling
                 zooms = self.mnist.glimpseSensor(X, sample_loc)
                 loss = self.ram.train(zooms, sample_loc, Y)
+                mean_loss.append(loss)
                 action = np.argmax(a_prob, axis=-1)
                 test_accuracy += np.sum(np.equal(action,Y).astype(np.float32), axis=-1)
                 test_accuracy_sqrt+= np.sum((np.equal(action,Y).astype(np.float32))**2, axis=-1)
@@ -192,7 +194,7 @@ class Experiment():
                 logging.info("Epoch={:d}: >>> examples/s: {:.2f}, Loss: {:.4f}, "
                              "Learning Rate: {:.6f}, Train-Accuracy: {:.4f} +/- {:.6f}, "
                              "Validation-Accuracy: {:.4f} +/- {:.6f}".format(total_epochs,
-                                 float(num_train_data)/float(time.time()-start_time), loss,
+                                 float(num_train_data)/float(time.time()-start_time), np.mean(mean_loss),
                                  lr, test_accuracy, test_accuracy_std, accuracy, accuracy_std))
 
                 # Early Stopping
