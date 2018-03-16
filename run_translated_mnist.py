@@ -91,7 +91,7 @@ class PARAMETERS:
     #   sgd
     OPTIMIZER = 'sgd'
     # Learning rate alpha
-    LEARNING_RATE = 0.01
+    LEARNING_RATE = 0.001
     # Number of steps the Learning rate should (linearly)
     # decay to MIN_LEARNING_RATE
     LEARNING_RATE_DECAY = 800
