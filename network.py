@@ -38,6 +38,8 @@ class RAM():
         self.lr = lr
         self.loc_std = loc_std
         self.pixel_scaling = pixel_scaling
+        self.average_loc = K.variable(np.zeros((self.batch_size, 2)))
+        self.average_baseline = K.variable(np.zeros((self.batch_size, 1)))
         # Learning Rate Decay
         if self.lr_decay != 0:
             self.lr_decay_rate = ((lr - min_lr) /
@@ -131,7 +133,7 @@ class RAM():
         #   Baseline Network
         #   ================
         baseline_output = keras.layers.Dense(1,
-                                 activation='linear',
+                                 activation='sigmoid',
                                  kernel_initializer=init_kernel,
                                  bias_initializer=bias_initializer,
                                  name='baseline_output',
@@ -217,6 +219,8 @@ class RAM():
 #        self.ram.get_layer('location_output').trainable = True
         action_p = K.stop_gradient(action_p)
         baseline = K.stop_gradient(baseline)
+        baseline = K.mean(K.concatenate([self.average_baseline, baseline], axis=1), axis=1)
+        baseline = K.reshape(baseline, (self.batch_size,1))
         def loss(y_true, y_pred):
             """
             REINFORCE algorithm for Normal Distribution
@@ -254,15 +258,15 @@ class RAM():
             # d ln(f(m,s,x))   (x - m)
             # -------------- = -------- with m = mean, x = sample, s = standard_deviation
             #       d m          s**2
-            g = y_pred + K.random_normal(shape=K.shape(y_pred), mean=0., stddev=self.loc_std)
-            location = self.hard_tanh(g) * self.pixel_scaling # normLoc coordinates are between -1 and 1
+         #   g = y_pred + K.random_normal(shape=K.shape(y_pred), mean=0., stddev=self.loc_std)
+         #   location = self.hard_tanh(g) * self.pixel_scaling # normLoc coordinates are between -1 and 1
 
             #TODO: Check how to deal with the 2 dims (x,y) of location
             #R = K.tile(R_out, [1, 2])
             #R = K.stack([R_out, R_out], axis=-1 )
             b = K.tile(baseline, [1, 2])
             # b = K.stack([baseline, baseline], axis=-1 )
-            loss_loc = ((location - y_pred)/(self.loc_std*self.loc_std)) * (R -b)
+            loss_loc = ((self.average_loc - y_pred)/(self.loc_std*self.loc_std)) * (R -b)
             cost = K.concatenate([policy, loss_loc], axis=1)
 
             cost = K.sum(cost, axis=1)
@@ -282,6 +286,8 @@ class RAM():
         """
  #       self.ram.trainable = True
         baseline = K.stop_gradient(baseline)
+        baseline = K.mean(K.concatenate([self.average_baseline, baseline], axis=1), axis=1)
+        baseline = K.reshape(baseline, (self.batch_size,1))
         mean = K.stop_gradient(mean)
         def loss(y_true, y_pred):
             """
@@ -315,15 +321,15 @@ class RAM():
             # d ln(f(m,s,x))   (x - m)
             # -------------- = -------- with m = mean, x = sample, s = standard_deviation
             #       d m          s**2
-            g = mean + K.random_normal(shape=K.shape(mean), mean=0., stddev=self.loc_std)
-            location = self.hard_tanh(g) * self.pixel_scaling # normLoc coordinates are between -1 and 1
+          #  g = mean + K.random_normal(shape=K.shape(mean), mean=0., stddev=self.loc_std)
+          #  location = self.hard_tanh(g) * self.pixel_scaling # normLoc coordinates are between -1 and 1
 
             #TODO: Check how to deal with the 2 dims (x,y) of location
            # R = K.tile(R_out, [1, 2])
             R = K.stack([R_out, R_out], axis=-1 )
             b = K.tile(baseline, [1, 2])
            # b = K.stack([baseline, baseline], axis=-1 )
-            loss_loc = ((location - mean)/(self.loc_std*self.loc_std)) * (R -b)
+            loss_loc = ((self.average_loc - mean)/(self.loc_std*self.loc_std)) * (R -b)
             cost = K.concatenate([y_pred * y_true, loss_loc], axis=1)
             cost = K.sum(cost, axis=1)
             cost = K.mean(cost, axis=0)
@@ -353,13 +359,19 @@ class RAM():
             # Compute Predicted and Correct action values
             max_p_y = K.argmax(action_p, axis=-1)
             action = K.cast(y_true, 'int64')
-
+          #  baseline = np.mean(K.concatenate([self.average_baseline, y_pred], axis=-1), axis=-1)
+          #  baseline = K.reshape(baseline, (self.batch_size,1))
             # Get Reward for current step
             R = K.equal(max_p_y, action) # reward per example
             R_out = K.cast(R, 'float32')
             return K.mean(K.square(y_pred - R_out), axis=-1)
         return loss
 
+    def set_av_loc(self,av_loc):
+        K.set_value(self.average_loc, av_loc)
+
+    def set_av_b(self,av_b):
+        K.set_value(self.average_baseline, av_b)
 
     def learning_rate_decay(self):
         """
@@ -425,8 +437,8 @@ class RAM():
         """
 
         glimpse_input = np.reshape(X, (self.batch_size, self.totalSensorBandwidth))
-        action_prob, loc, _ = self.ram.predict_on_batch({"glimpse_input": glimpse_input, 'location_input': loc})
-        return action_prob, loc
+        action_prob, loc, b = self.ram.predict_on_batch({"glimpse_input": glimpse_input, 'location_input': loc})
+        return action_prob, loc, b
 
     def get_weights(self):
         return self.ram.get_weights()

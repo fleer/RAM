@@ -107,7 +107,7 @@ class Experiment():
             loc = np.maximum(-1., np.minimum(1., np.random.normal(mean_loc, self.loc_std, mean_loc.shape)))* self.pixel_scaling
             for n in range(self.nGlimpses):
                 zooms = self.mnist.glimpseSensor(X,loc)
-                a_prob, mean_loc = self.ram.choose_action(zooms, loc)
+                a_prob, mean_loc, _ = self.ram.choose_action(zooms, loc)
                 #loc = mean_loc * self.pixel_scaling
                 # During evaluation, instead of sampling from the normal distribution, the output is
                 # taken to be the input, i.e. the mean.
@@ -156,14 +156,21 @@ class Experiment():
             test_accuracy = 0
             test_accuracy_sqrt = 0
             while total_epochs == self.mnist.dataset.train.epochs_completed:
+                average_loc = []
+                average_b = []
                 X, Y= self.mnist.get_batch_train(self.batch_size)
                 loc = self.ram.start_location()
                 sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape))) * self.pixel_scaling
                 for n in range(1, self.nGlimpses):
+                    average_loc.append(sample_loc)
                     zooms = self.mnist.glimpseSensor(X, sample_loc)
-                    a_prob, loc = self.ram.choose_action(zooms, sample_loc)
+                    a_prob, loc, b = self.ram.choose_action(zooms, sample_loc)
                     # During training, the output is sampled from a normal distribution with fixed standard deviation.
                     sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))*self.pixel_scaling
+                    average_b.append(b)
+                average_loc.append(sample_loc)
+                self.ram.set_av_loc(np.mean(average_loc, axis=0))
+                self.ram.set_av_b(np.mean(average_b, axis=0))
                 zooms = self.mnist.glimpseSensor(X, sample_loc)
                 loss = self.ram.train(zooms, sample_loc, Y)
                 mean_loss.append(loss)
