@@ -266,10 +266,11 @@ class RAM():
             #R = K.stack([R_out, R_out], axis=-1 )
             b = K.tile(baseline, [1, 2])
             # b = K.stack([baseline, baseline], axis=-1 )
-            loss_loc = ((self.average_loc - y_pred)/(self.loc_std*self.loc_std)) * (R -b)
+            #loss_loc = ((self.average_loc - y_pred)/(self.loc_std*self.loc_std)) * (R -b)
+            loss_loc = self.average_loc * (R -b)
             cost = K.concatenate([policy, loss_loc], axis=1)
 
-            cost = K.sum(cost, axis=1)
+            cost = K.sum(cost, axis=1) + K.sum(y_pred - y_pred)
             cost = K.mean(cost, axis=0)
             return - cost
         #TODO: Test alternative--> Only train dense layer of location output
@@ -329,7 +330,8 @@ class RAM():
             R = K.stack([R_out, R_out], axis=-1 )
             b = K.tile(baseline, [1, 2])
            # b = K.stack([baseline, baseline], axis=-1 )
-            loss_loc = ((self.average_loc - mean)/(self.loc_std*self.loc_std)) * (R -b)
+            #loss_loc = ((self.average_loc - mean)/(self.loc_std*self.loc_std)) * (R -b)
+            loss_loc = self.average_loc * (R -b)
             cost = K.concatenate([y_pred * y_true, loss_loc], axis=1)
             cost = K.sum(cost, axis=1)
             cost = K.mean(cost, axis=0)

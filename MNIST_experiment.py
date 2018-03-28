@@ -1,7 +1,7 @@
 from MNIST_Processing import MNIST
 from network import RAM
 import numpy as np
-import keras
+import scipy.stats as stats
 from collections import defaultdict
 import logging
 import time
@@ -161,14 +161,16 @@ class Experiment():
                 X, Y= self.mnist.get_batch_train(self.batch_size)
                 loc = self.ram.start_location()
                 sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape))) * self.pixel_scaling
+                loc_pdf = stats.norm(loc, self.loc_std).logpdf(sample_loc)
                 for n in range(1, self.nGlimpses):
-                    average_loc.append(sample_loc)
+                    average_loc.append(loc_pdf)
                     zooms = self.mnist.glimpseSensor(X, sample_loc)
                     a_prob, loc, b = self.ram.choose_action(zooms, sample_loc)
                     # During training, the output is sampled from a normal distribution with fixed standard deviation.
                     sample_loc = np.maximum(-1., np.minimum(1., np.random.normal(loc, self.loc_std, loc.shape)))*self.pixel_scaling
+                    loc_pdf = stats.norm(loc, self.loc_std).logpdf(sample_loc)
                     average_b.append(b)
-                average_loc.append(sample_loc)
+                average_loc.append(loc_pdf)
                 self.ram.set_av_loc(np.mean(average_loc, axis=0))
                 self.ram.set_av_b(np.mean(average_b, axis=0))
                 zooms = self.mnist.glimpseSensor(X, sample_loc)
